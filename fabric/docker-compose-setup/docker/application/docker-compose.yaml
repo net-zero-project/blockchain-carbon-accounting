@@ -28,6 +28,16 @@ services:
         cap_add:
           - IPC_LOCK
         command: server -dev -dev-root-token-id tokenId
+    ws-identity: 
+        container_name: ws-identity
+        image: ghcr.io/brioux/ws-identity:latest
+        ports:
+          - "8700:8700"
+    oracle: 
+        container_name: oracle
+        image: ghcr.io/ackintya/oracles:latest
+        ports:
+          - "3002:3002"
     api:
         container_name: api
         image: zzocker20/utilityemissions-api:0.0.3

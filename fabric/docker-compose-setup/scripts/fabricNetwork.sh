@@ -49,6 +49,10 @@ case $CMD in
         if [ "$(docker ps -q -f name=ws-identity)" ]; then
             docker rm -f ws-identity
         fi
+
+        if [ "$(docker ps -q -f name=oracle)" ]; then
+            docker rm -f oracle
+        fi
     ;;
 
     *)
