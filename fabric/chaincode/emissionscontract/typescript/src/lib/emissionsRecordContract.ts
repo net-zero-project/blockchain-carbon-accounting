@@ -56,7 +56,7 @@ export class EmissionsRecordContract {
         };
 
         async function getCO2EmissionFactor(): Promise<CO2EmissionFactorInterface> {
-            return fetch('https://localhost:3002/postgres/mock', options)
+            return fetch('http://oracle:3002/postgres/mock', options)
                 .then((response) => response.json())
                 .then((response) => {
                     return response as CO2EmissionFactorInterface;

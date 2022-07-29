@@ -9,11 +9,11 @@
 
 MODE=${1:-local}
 
+NETWORK_NAME="carbonAccounting"
 case $MODE in
   local)
-        docker-compose -f ./docker/application/docker-compose.yaml up -d vault locals3
-        docker run --rm --name ws-identity -d --cap-add=IPC_LOCK -p 8700:8700 ghcr.io/brioux/ws-identity
-        docker run --rm --name oracle -d --cap-add=IPC_LOCK -p 3200:3200 ghcr.io/ackintya/oracles
+        docker-compose -f ./docker/application/docker-compose.yaml up -d vault locals3 oracle ws-identity
+        docker network connect $NETWORK_NAME oracle
         cd ../typescript_app
         ./cp-blockchain-gateway-lib.sh
 
@@ -28,8 +28,6 @@ case $MODE in
   ;;
 
   docker)
-        NETWORK_NAME="carbonAccounting"
-
         docker-compose -f ./docker/application/docker-compose.yaml up -d
 
         docker network connect $NETWORK_NAME api
