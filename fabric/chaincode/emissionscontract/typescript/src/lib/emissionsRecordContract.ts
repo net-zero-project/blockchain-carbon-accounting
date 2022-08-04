@@ -55,7 +55,7 @@ export class EmissionsRecordContract {
         };
 
         async function getCO2EmissionFactor(): Promise<CO2EmissionFactorInterface> {
-            return fetch('http://localhost:3002/postgres/uuid', options)
+            return fetch('http://host.docker.internal:3002/postgres/uuid', options)
                 .then((response) => response.json())
                 .then((response) => {
                     return response as CO2EmissionFactorInterface;
