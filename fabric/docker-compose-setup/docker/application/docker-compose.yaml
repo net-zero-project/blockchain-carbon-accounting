@@ -35,9 +35,15 @@ services:
           - "8700:8700"
     oracle: 
         container_name: oracle
-        image: ghcr.io/ackintya/oracles:latest
+        image: ghcr.io/ackintya/oracles:1.0.0
         ports:
           - "3002:3002"
+        environment:
+            - DB_USER=postgres
+            - DB_PASSWORD=achintyakr
+            - DB_NAME=blockchain-carbon-accounting
+            - DB_HOST=127.0.0.1
+            - DB_PORT=5432
     api:
         container_name: api
         image: zzocker20/utilityemissions-api:0.0.3

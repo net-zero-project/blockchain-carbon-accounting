@@ -8,7 +8,6 @@ import {
     UtilityLookupItemState,
 } from './utilityLookupItem';
 import { CO2EmissionFactorInterface } from './emissions-calc';
-
 import fetch from 'node-fetch';
 // EmissionsRecordContract : core bushiness logic of emissions record chaincode
 export class EmissionsRecordContract {
@@ -56,7 +55,7 @@ export class EmissionsRecordContract {
         };
 
         async function getCO2EmissionFactor(): Promise<CO2EmissionFactorInterface> {
-            return fetch('http://oracle:3002/postgres/mock', options)
+            return fetch('http://localhost:3002/postgres/uuid', options)
                 .then((response) => response.json())
                 .then((response) => {
                     return response as CO2EmissionFactorInterface;
