@@ -20,7 +20,7 @@ setup('DEBUG', 'DEBUG');
 // env
 config();
 
-const mockUtilityID = 'USA_EIA_11208';
+const mockUtilityID = '004171fd-aaa9-42de-80d4-e2ef48d2ba24';
 
 describe('EmissionsDataGateway', () => {
     const bcConfig = new BCGatewayConfig();
