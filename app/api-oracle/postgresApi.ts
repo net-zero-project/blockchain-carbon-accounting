@@ -4,6 +4,8 @@ import { parseCommonYargsOptions} from "../../data/src/config"
 import {PostgresDBService } from "../../data/src/postgresDbService"
 import { argv } from 'process';
 import * as dotenv from 'dotenv'
+import { MD5 } from 'crypto-js';
+
 dotenv.config({path:'../../../.env'})
 
 interface ActivityInterface {
@@ -34,22 +36,29 @@ app.get('/', (request, response) => {
     response.json({ info: 'welcome to Postgres API' });
 });
 
+let query_uuid: string;
+let query_respone: object;
+
 app.post('/postgres/uuid', async(req,res)=>{
     const db = await PostgresDBService.getInstance(parseCommonYargsOptions(argv))
     const uuid = req.body.uuid.toString()
     const usage = Number(req.body.usage)
     const usageUOM = req.body.usageUOM.toString()
     const thruDate= req.body.thruDate.toString()
-    const lookup= await db.getUtilityLookupItemRepo().getUtilityLookupItem(uuid)
-    if(lookup===null){ 
-    res.status(500);    
+    if(query_uuid===undefined){
+        query_uuid = MD5(uuid + usage + usageUOM + thruDate).toString();
+
+        const lookup= await db.getUtilityLookupItemRepo().getUtilityLookupItem(uuid)
+        if(lookup===null){res.status(500)}
+        else{
+            const ans= await db.getEmissionsFactorRepo().getCO2EmissionFactorByLookup(lookup,usage,usageUOM,thruDate);
+            db.close();
+            
+            query_respone = ans;
+        }
     }
-    else
-    {
-    const ans= await db.getEmissionsFactorRepo().getCO2EmissionFactorByLookup(lookup,usage,usageUOM,thruDate);
-    db.close();
-    return res.status(200).json(ans);
-    }
+    console.log(query_respone)
+    return res.status(200).json(query_respone);
 })
 
 
