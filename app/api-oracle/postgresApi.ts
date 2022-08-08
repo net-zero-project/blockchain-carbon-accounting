@@ -5,9 +5,9 @@ import {PostgresDBService } from "../../data/src/postgresDbService"
 import { argv } from 'process';
 import * as dotenv from 'dotenv'
 import { MD5 } from 'crypto-js';
-
+import NodeCache from 'node-cache';
 dotenv.config({path:'../../../.env'})
-
+const cache = new NodeCache();
 interface ActivityInterface {
     scope: string;
     level_1: string;
@@ -37,7 +37,6 @@ app.get('/', (request, response) => {
 });
 
 let query_uuid: string;
-let query_respone: object;
 
 app.post('/postgres/uuid', async(req,res)=>{
     const db = await PostgresDBService.getInstance(parseCommonYargsOptions(argv))
@@ -45,9 +44,15 @@ app.post('/postgres/uuid', async(req,res)=>{
     const usage = Number(req.body.usage)
     const usageUOM = req.body.usageUOM.toString()
     const thruDate= req.body.thruDate.toString()
-    if(query_uuid===undefined){
-        query_uuid = MD5(uuid + usage + usageUOM + thruDate).toString();
 
+    query_uuid = MD5(uuid + usage + usageUOM + thruDate).toString();
+        const key=query_uuid;
+        const cachedResponse = cache.get(key);
+        let query_respone;
+        if(cachedResponse){
+        query_respone = cachedResponse;
+        }
+        else {
         const lookup= await db.getUtilityLookupItemRepo().getUtilityLookupItem(uuid)
         if(lookup===null){res.status(500)}
         else{
@@ -55,11 +60,12 @@ app.post('/postgres/uuid', async(req,res)=>{
             db.close();
             
             query_respone = ans;
+            cache.set(key, query_respone, 300);
         }
     }
     console.log(query_respone)
     return res.status(200).json(query_respone);
-})
+});
 
 
 app.post('/postgres/Activity', async(req,res)=>{
