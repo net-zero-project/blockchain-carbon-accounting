@@ -12,8 +12,7 @@ MODE=${1:-local}
 NETWORK_NAME="carbonAccounting"
 case $MODE in
   local)
-        docker-compose -f ./docker/application/docker-compose.yaml up -d vault locals3 oracle ws-identity
-        docker network connect $NETWORK_NAME oracle
+        docker-compose -f ./docker/application/docker-compose.yaml up -d vault locals3 ws-identity
         cd ../typescript_app
         ./cp-blockchain-gateway-lib.sh
 

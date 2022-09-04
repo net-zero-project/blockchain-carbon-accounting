@@ -5,7 +5,7 @@
   "description": "Emissions Data Chaincode",
   "main": "dist/index.js",
   "scripts": {
-    "build": "tsc",
+    "build": "sh emissions-data-lib.sh && tsc",
     "lint": "eslint 'src/**/*.ts' 'test/**/*.ts'",
     "lint:fix": "eslint 'src/**/*.ts' 'test/**/*.ts' --fix",
     "test": "mocha -r ts-node/register 'test/**/*.test.ts'",

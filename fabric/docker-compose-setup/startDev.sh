@@ -26,7 +26,7 @@ echo "=== [startDev] Creating the channel..."
 docker exec cli /bin/bash ./network.sh createChannel
 
 echo "=== [startDev] Installing utility emissions channel TypeScript chaincode..."
-docker exec cli /bin/bash ./network.sh deployCC -ccn emissions -ccp ../chaincode/emissionscontract/typescript -ccv 1 -ccl typescript
+docker exec cli /bin/bash ./network.sh deployCC -ccn emissions -ccp ../chaincode/emissionscontract/typescript -ccv 1 -ccl typescript 
 
 echo "=== [startDev] Installing datalock chaincode..."
 docker exec cli /bin/bash ./network.sh deployCC -ccn datalock -ccp ../chaincode/datalock -ccv 1 -ccl go

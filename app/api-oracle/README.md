@@ -2,10 +2,6 @@
 
 This component contains a rest API server for searching emissions from external datastorage.  It can be used to search for co2emissions using either activity or ``uuid, thruDate, usage, usageUOM``.
 
-
-
-
-
 ![rest-api workflow](/rest-api.png)
 ## Run server
 

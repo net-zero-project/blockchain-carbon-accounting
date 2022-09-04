@@ -1,11 +1,15 @@
 import bodyParser from 'body-parser';
 import express from 'express';
-import { parseCommonYargsOptions} from "../../data/src/config"
-import {PostgresDBService } from "../../data/src/postgresDbService"
+import { addCommonYargsOptions,parseCommonYargsOptions} from "../../data/src/config"
+import { PostgresDBService } from "../../data/src/postgresDbService"
 import { argv } from 'process';
+
 import * as dotenv from 'dotenv'
 import { MD5 } from 'crypto-js';
 import NodeCache from 'node-cache';
+import yargs = require('yargs');
+import { hideBin } from "yargs/helpers";
+
 dotenv.config({path:'../../../.env'})
 const cache = new NodeCache();
 interface ActivityInterface {
@@ -36,8 +40,6 @@ app.get('/', (request, response) => {
     response.json({ info: 'welcome to Postgres API' });
 });
 
-let query_uuid: string;
-
 app.post('/postgres/uuid', async(req,res)=>{
     const db = await PostgresDBService.getInstance(parseCommonYargsOptions(argv))
     const uuid = req.body.uuid.toString()
@@ -45,41 +47,50 @@ app.post('/postgres/uuid', async(req,res)=>{
     const usageUOM = req.body.usageUOM.toString()
     const thruDate= req.body.thruDate.toString()
 
-    query_uuid = MD5(uuid + usage + usageUOM + thruDate).toString();
-        const key=query_uuid;
-        const cachedResponse = cache.get(key);
-        let query_respone;
-        if(cachedResponse){
-        query_respone = cachedResponse;
-        }
-        else {
+    let query_uuid = MD5(uuid + usage + usageUOM + thruDate).toString();
+    const key = query_uuid+"_resp";
+    const responseInitialized = cache.get(query_uuid);
+    let query_response;
+    if(responseInitialized){
+        query_response = await returnCachedResponse(key);
+    }else{
+        cache.set(query_uuid, true, 300);
         const lookup= await db.getUtilityLookupItemRepo().getUtilityLookupItem(uuid)
         if(lookup===null){res.status(500)}
         else{
-            const ans= await db.getEmissionsFactorRepo().getCO2EmissionFactorByLookup(lookup,usage,usageUOM,thruDate);
+            const ans = await db.getEmissionsFactorRepo().getCO2EmissionFactorByLookup(lookup,usage,usageUOM,thruDate);
             db.close();
-            
-            query_respone = ans;
-            cache.set(key, query_respone, 300);
+            query_response = ans;
+            cache.set(key, query_response, 300);
         }
     }
-    console.log(query_respone)
-    return res.status(200).json(query_respone);
+    
+    return res.status(200).json(query_response);
 });
+
+async function returnCachedResponse(key:string) {
+    return new Promise(function (resolve, reject) {
+        (function waitForResponse(){
+            let cachedResponse = cache.get(key);
+            if (cachedResponse){return resolve(cachedResponse)}
+            else{ setTimeout(waitForResponse, 30)};
+        })();
+    });
+}
 
 
 app.post('/postgres/Activity', async(req,res)=>{
     const db = await PostgresDBService.getInstance(parseCommonYargsOptions(argv))
 
-     const activity: ActivityInterface = {
-     scope : req.body.scope.toString(),
-     level_1 : req.body.level1.toString(),
-     level_2 : req.body.level2.toString(),
-     level_3 : req.body.level3.toString(),
-     level_4 : req.body.level4.toString(),
-     text : req.body.text.toString(),
-     activity : Number(req.body.amount),
-     activity_uom : req.body.uom.toString(),
+    const activity: ActivityInterface = {
+        scope : req.body.scope.toString(),
+        level_1 : req.body.level1.toString(),
+        level_2 : req.body.level2.toString(),
+        level_3 : req.body.level3.toString(),
+        level_4 : req.body.level4.toString(),
+        text : req.body.text.toString(),
+        activity : Number(req.body.amount),
+        activity_uom : req.body.uom.toString(),
     }
 
     const ans= await db.getEmissionsFactorRepo().getCO2EmissionByActivity(activity);
@@ -87,7 +98,7 @@ app.post('/postgres/Activity', async(req,res)=>{
        res.status(200).json(ans);
 });
 
-app.listen(port, () => {
+app.listen(port, async() => {
     console.log('Api is running on port',port);
 });
 export default app

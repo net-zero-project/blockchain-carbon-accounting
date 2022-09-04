@@ -136,19 +136,19 @@ export class EmissionsFactorRepo implements EmissionFactorDbInterface {
     thruDate: string
   ): Promise<EmissionsFactorInterface> => {
     const hasStateData = lookup.state_province !== ""
-    const isNercRegion = lookup.divisions?.division_type.toLowerCase() === "nerc_region"
-    const isNonUSCountry = lookup.divisions?.division_type.toLowerCase() === "country" && lookup.divisions?.division_id.toLowerCase() !== "usa"
-    let divisionID: string
-    let divisionType: string
+    const isNercRegion = lookup.division_type?.toLowerCase() === "nerc_region"
+    const isNonUSCountry = lookup.division_type?.toLowerCase() === "country" && lookup.division_id?.toLowerCase() !== "usa"
+    let divisionID;
+    let divisionType;
     let year: number | undefined
     if (hasStateData && lookup.state_province) {
       divisionID = lookup.state_province
       divisionType = "STATE"
-    } else if (isNercRegion && lookup.divisions?.division_id) {
-      divisionID = lookup.divisions?.division_id
-      divisionType = lookup.divisions?.division_type
-    } else if (isNonUSCountry && lookup.divisions?.division_id) {
-      divisionID = lookup.divisions?.division_id
+    } else if (isNercRegion && lookup.division_id && lookup.division_type) {
+      divisionID = lookup.division_id
+      divisionType = lookup.division_type
+    } else if (isNonUSCountry && lookup.division_id) {
+      divisionID = lookup.division_id
       divisionType = "Country"
     } else {
       divisionID = "USA"
@@ -162,7 +162,6 @@ export class EmissionsFactorRepo implements EmissionFactorDbInterface {
       console.error(error)
       year = undefined
     }
-
     console.log("fetching utilityFactors")
     const utilityFactors = await this.getEmissionsFactorsByDivision(
       divisionID,
