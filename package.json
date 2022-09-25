@@ -34,19 +34,10 @@
       "data",
       "lib/*",
       "app/api-server",
-      "app/api-oracle",
-      "app/frontend/*",
-      "app/supply-chain",
-      "app/supply-chain/api",
+      "app/frontend/contracts",
       "app/methane",
       "app/methane/server",
-      "app/methane/clients/*",
-      "fabric/typescript_app",
-      "fabric/chaincode/emissionscontract/typescript",
-      "hardhat",
-      "open-offsets-directory/node-server",
-      "open-offsets-directory/react",
-      "secure-identities/ws-identity-client"
+      "app/methane/clients/*"
     ]
   },
   "type": "module",
