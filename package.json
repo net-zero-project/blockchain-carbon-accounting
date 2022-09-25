@@ -37,7 +37,8 @@
       "app/frontend/contracts",
       "app/methane",
       "app/methane/server",
-      "app/methane/clients/*"
+      "fabric/typescript_app",
+      "secure-identities/ws-identity-client"
     ]
   },
   "type": "module",
