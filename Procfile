@@ -1,1 +1,1 @@
-web: npm install -g serve; npm run methane:app:client
+web: npm install -g serve; npm run methane:client:prod
