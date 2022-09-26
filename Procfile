@@ -1,1 +1,1 @@
-web: npm run methane:app:server
+web: npm run methane:server:prod
