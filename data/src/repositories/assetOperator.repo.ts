@@ -2,7 +2,9 @@ import type { AssetOperatorInterface } from "@blockchain-carbon-accounting/oil-a
 import { OilAndGasAsset } from "../models/oilAndGasAsset"
 import { AssetOperator } from "../models/assetOperator"
 import { Operator } from "../models/operator"
-import { DataSource, FindOptionsWhere, IsNull} from "typeorm"
+import { DataSource, SelectQueryBuilder, FindOptionsWhere, IsNull} from "typeorm"
+
+import { buildQueries, QueryBundle } from "./common"
 
 export class AssetOperatorRepo {
 
@@ -45,10 +47,6 @@ export class AssetOperatorRepo {
     }
   }
 
-  public getAssetOperator = async (uuid: string): Promise<AssetOperator | null> => {
-    return await this._db.getRepository(AssetOperator).findOneBy({uuid})
-  }
-
   public getAssetOperators = async (): Promise<AssetOperator[]> => {
     return await this._db.getRepository(AssetOperator).find()
   }
@@ -57,6 +55,40 @@ export class AssetOperatorRepo {
     return await this._db.getRepository(AssetOperator).count()
   }
 
+  public selectAssetsPaginated = async (
+    offset: number, 
+    limit: number, 
+    bundles: Array<QueryBundle>
+  ): Promise<Array<OilAndGasAsset>> => {
+    let selectBuilder: SelectQueryBuilder<AssetOperator> 
+      = await this._db.getRepository(AssetOperator).createQueryBuilder("asset_operator")
+    // category by issuer address
+    selectBuilder = buildQueries('asset_operator', selectBuilder, bundles)
+    return selectBuilder
+      .innerJoinAndSelect(
+        "asset_operator.assets",
+        "assets"
+      )
+      .limit(limit)
+      .offset(offset)
+      //.orderBy('asset_operators.operator', 'ASC')
+      .getRawMany();
+  }
 
+  public countAssets = async (
+    bundles: Array<QueryBundle>
+  ): Promise<number> => {
+    let selectBuilder: SelectQueryBuilder<AssetOperator> 
+      = await this._db.getRepository(AssetOperator).createQueryBuilder("asset_operator")
+    // category by issuer address
+    selectBuilder = buildQueries('asset_operator', selectBuilder, bundles)
+    return selectBuilder
+      .innerJoinAndSelect(
+        "asset_operator.assets",
+        "assets"
+      )
+      .select('oil_and_gas_asset.operator')
+      .getCount()
+  }
 
 }

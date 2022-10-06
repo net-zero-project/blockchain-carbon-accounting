@@ -15,6 +15,7 @@ export type QueryBundle = {
   value: number | string,
   op: string,
   fieldSuffix?: string, // use this if conditioning the same field more than once
+  union?:boolean,
 }
 
 export interface StringPayload {
@@ -108,7 +109,6 @@ export function buildQueries(
   builder: SelectQueryBuilder<any>, 
   queries: Array<QueryBundle>, 
   entities?: EntityTarget<any>[],
-  union?: boolean
 ) : SelectQueryBuilder<any> {
   const len = queries.length
   for (let i = 0; i < len; i++) {
@@ -146,7 +146,7 @@ export function buildQueries(
       for (const entity of entities) {
         const md = builder.connection.getMetadata(entity)
         if (md.hasColumnWithPropertyPath(query.field)) {
-          alias = md.name;
+          alias = md.tableName;
           break;
         }
       }
@@ -168,10 +168,10 @@ export function buildQueries(
     } else {
       cond = `${alias}.${query.field} ${query.op} :${query_field_label}`
     }
-    if(union){
-      builder = builder.orWhere(cond, payload)
-    }else{
+    if(query.union){
       builder = builder.andWhere(cond, payload)
+    }else{
+      builder = builder.orWhere(cond, payload)
     }
 
   }

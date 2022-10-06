@@ -30,24 +30,28 @@ export const matchAssets = async (
           fieldType: 'number',
           value: (latitude+0.008*resolution),
           op: '<',
+          union: true,
         },{
           field: 'latitude',
           fieldSuffix: 'lower',
           fieldType: 'number',
           value: (latitude-0.008*resolution),
-          op: '>',           
+          op: '>',
+          union: true,           
         },{   
           field: 'longitude',
           fieldSuffix: 'upper',
           fieldType: 'number',
           value: longitude+360*resolution/(40075*Math.cos(latitude*Math.PI/180)),
           op: '<',
+          union: true,
         },{
           field: 'longitude',
           fieldSuffix: 'lower',
           fieldType: 'number',
           value: longitude-360*resolution/(40075*Math.cos(latitude*Math.PI/180)),
-          op: '>',           
+          op: '>',  
+          union: true,         
         }
       ]);
     

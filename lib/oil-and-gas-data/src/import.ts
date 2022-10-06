@@ -129,7 +129,7 @@ export const importProductData = async (opts: ParseWorksheetOpts,
     const loader = new LoadInfo(opts.file, opts.sheet, progressBar, data.length);
     for (const row of data) {
       if (!row) { loader.incIgnored('Undefined row'); continue; }
-      const amount = row["BCM "+opts.year] || row["BCM_"+opts.year];
+      let amount = row["BCM "+opts.year] || row["BCM_"+opts.year];
       if (!amount) { loader.incIgnored('Undefined amount'); continue; }
       //if (row["Data Year"] == "YEAR") { loader.incIgnored('Header row'); continue; }
       opts.verbose && console.log("-- Prepare to insert from ", row);
@@ -156,7 +156,7 @@ export const importProductData = async (opts: ParseWorksheetOpts,
         class: PRODUCT_CLASS_IDENTIFIER,
         type: "Flaring",
         name: "methane",
-        amount: amount?.toString(),
+        amount: Number(amount),
         unit: "bcm",
         year: opts.year,
         country: country,
@@ -206,7 +206,7 @@ export const importProductData = async (opts: ParseWorksheetOpts,
         type: opts.type,
         name: opts.name,
         unit: opts.unit,
-        amount: row[amountHeader],
+        amount: Number(row[amountHeader]),
         year: row["Date"].getFullYear().toString(),
         month: months[row["Date"].getMonth()],
         from_date: row["Date"],
@@ -228,7 +228,7 @@ export const importProductData = async (opts: ParseWorksheetOpts,
         amountHeader = [state,opts.name,opts.type,"("+opts.unit+")"].join(" ");
         if (!row[amountHeader]) { loader.incIgnored('Undefined amount'); continue; }
         d["division_name"] = state;
-        d["amount"] = row[amountHeader];
+        d["amount"] = Number(row[amountHeader]);
         await db.getProductRepo().putProduct(d);
       }
       loader.incLoaded();
@@ -268,13 +268,13 @@ export const importProductData = async (opts: ParseWorksheetOpts,
         type: '',
         name: '',
         unit: '',
-        amount: '0'
+        amount: 0
       };
       if (row["estimated_flare_volume_mcf"]) {     
         d["type"]='Flaring';
         d["name"]='Methane';  
         d['unit']='MCF';
-        d["amount"]=row["estimated_flare_volume_mcf"]; 
+        d["amount"]=Number(row["estimated_flare_volume_mcf"]); 
         d["year"]=row["month"].getFullYear().toString();
         d["month"]=months[row["month"].getMonth()];
         d["from_date"]=row["month"];
@@ -339,7 +339,7 @@ export const importProductData = async (opts: ParseWorksheetOpts,
         d["unit"]=row["product_units"];
         for(const col of cols){
           if (!row[col]) {loader.incIgnored('Undefined col amount'); continue } 
-          d["amount"]=row[col];
+          d["amount"]=Number(row[col]);
           d["year"] = col.substr(col.length - 4);
           d["month"] = col.slice(0,3);
           await db.getProductRepo().putProduct(d);
@@ -405,7 +405,7 @@ export const importProductData = async (opts: ParseWorksheetOpts,
           }
   
           const assets:OilAndGasAsset[] = 
-            await db.getOilAndGasAssetRepo().selectPaginated(0,0,queries,true);
+            await db.getOilAndGasAssetRepo().selectPaginated(0,0,queries);
           if(assets.length==0){
             console.log('No assets found for company : ', row["Company"])
           }
@@ -433,7 +433,7 @@ export const importProductData = async (opts: ParseWorksheetOpts,
         type: '',
         name: '',
         unit: '',
-        amount: '0',
+        amount: 0,
         year: row["Data Year"],
         division_type: "Company",
         division_name: row["Company"],
@@ -446,7 +446,7 @@ export const importProductData = async (opts: ParseWorksheetOpts,
       }
       for (const col of cols){
         
-        d["amount"] = row[col];
+        d["amount"] = Number(row[col]);
         if (!row[col]) { loader.incIgnored('Undefined col'); continue; }
         switch(col) {
           case "CO2": case "CH4": case "N2O": case "GHG" :

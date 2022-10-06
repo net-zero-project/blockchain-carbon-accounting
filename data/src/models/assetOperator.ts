@@ -3,9 +3,10 @@ import type {
 } from '@blockchain-carbon-accounting/oil-and-gas-data-lib';
 import {
   Column, Entity,
+  PrimaryColumn,
   PrimaryGeneratedColumn,
   ManyToOne,
-  JoinTable,
+  JoinColumn,
   Unique,
   Check
 } from 'typeorm';
@@ -25,12 +26,18 @@ export class AssetOperator implements AssetOperatorInterface {
   @Column()
   class!: string;
 
+  @Column()
+  assetUuid!: string;
+
   @ManyToOne(() => OilAndGasAsset, (asset) => asset.asset_operators)
-  @JoinTable()
+  @JoinColumn({name: 'assetUuid'})
   asset!: OilAndGasAsset;
 
+  @Column()
+  operatorUuid!: string;
+
   @ManyToOne(() => Operator, (operator) => operator.asset_operators)
-  @JoinTable()
+  @JoinColumn({name: 'operatorUuid'})
   operator!: Operator;
 
   @Column({type: 'double precision', nullable:true})
