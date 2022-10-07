@@ -782,7 +782,7 @@ export async function getTrackerDetails(
     let myTokenAmounts = [].map(BigInt);
     let myProductsTotalEmissions = BigInt(0);
     
-    let result, products:ProductToken[]=[];
+    let products:ProductToken[]=[];
     for (let i = 0; i < productIds.length; i++) {
       let productId = productIds[i]
 

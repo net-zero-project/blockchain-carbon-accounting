@@ -7,8 +7,7 @@ import {
   useEffect,
   useImperativeHandle,
   useState,
-  ForwardRefRenderFunction,
-  ElementRef
+  ForwardRefRenderFunction
 } from "react";
 import Spinner from "react-bootstrap/Spinner";
 import Table from "react-bootstrap/Table";
@@ -126,7 +125,7 @@ const Operators: ForwardRefRenderFunction<OperatorsHandle, OperatorsProps> = ({ 
 
   async function handleRefresh() {
     // clear localStorage
-    let localStorage = window.localStorage;
+    //let localStorage = window.localStorage;
     //localStorage.setItem('', '');
     await fetchOperators(page, pageSize, operatorsQuery);
   }

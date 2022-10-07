@@ -16,7 +16,9 @@ import { BsFunnel } from 'react-icons/bs';
 import { getAssets, getOperator } from '../services/api.service';
 import QueryBuilder from "@blockchain-carbon-accounting/react-app/src/components/query-builder";
 import Paginator from "@blockchain-carbon-accounting/react-app/src/components/paginate";
-import { ASSET_FIELDS, Asset, Operator } from "../components/static-data";
+import { Wallet } from "@blockchain-carbon-accounting/react-app/src/components/static-data";
+
+import { ASSET_FIELDS, Asset, Operator, Product } from "../components/static-data";
 import AssetInfoModal from "../components/asset-info-modal";
 
 import { Link } from "wouter";
@@ -40,6 +42,9 @@ const RegisteredOperator: ForwardRefRenderFunction<OperatorsHandle, OperatorsPro
   // Modal display and token it is set to
   const [modalShow, setModalShow] = useState(false);
   const [operator, setOperator] = useState<Operator | undefined>()
+  const [products, setProducts] = useState<Product[] | undefined>()
+  const [wallet, setWallet] = useState<Wallet | undefined>()
+
   const [selectedAsset, setSelectedAsset] = useState<Asset | undefined>();
   const [selectedAssets, setSelectedAssets] = useState<Asset[]>([]);
   const [fetchingAssets, setFetchingAssets] = useState(false);
@@ -134,6 +139,8 @@ const RegisteredOperator: ForwardRefRenderFunction<OperatorsHandle, OperatorsPro
     const init = async () => {
       const {operator, products, wallet} = await getOperator(operatorUuid);
       setOperator(operator)
+      setProducts(products)
+      setWallet(wallet)
       await fetchAssets(1, 20, assetQuery);
     }
     if (true || signedInAddress) {
@@ -142,7 +149,7 @@ const RegisteredOperator: ForwardRefRenderFunction<OperatorsHandle, OperatorsPro
       // pending for signedInAddress. display the spinner ...
       setFetchingAssets(true);
     }
-  }, [signedInAddress, fetchAssets]);
+  }, [signedInAddress, setOperator, setProducts, setWallet, fetchAssets, assetQuery, operatorUuid]);
 
   function pointerHover(e: MouseEvent<HTMLElement>) {
     e.currentTarget.style.cursor = "pointer";
@@ -174,6 +181,8 @@ const RegisteredOperator: ForwardRefRenderFunction<OperatorsHandle, OperatorsPro
           <h2 style={{display: 'inline'}}>
             Operator: {operator?.name}&nbsp;
             ({operator?.asset_count?.toLocaleString('en-US')} assets)
+            ({products?.length.toLocaleString('en-US')} products)
+            {wallet?.organization}
           </h2>
           &nbsp;
           <Button className="mb-3" onClick={switchQueryBuilder} variant={(showQueryBuilder) ? 'dark' : 'outline-dark'}><BsFunnel /></Button>

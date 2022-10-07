@@ -34,7 +34,9 @@
     "start": "PORT=3007 react-app-rewired start",
     "build": "react-app-rewired build",
     "test": "react-app-rewired test",
-    "eject": "react-app-rewired eject"
+    "eject": "react-app-rewired eject",
+    "lint": "eslint 'src/**/*.ts'",
+    "lint:fix": "eslint 'src/**/*.ts' --fix"
   },
   "dependencies": {
     "@blockchain-carbon-accounting/contracts": "*",

@@ -315,7 +315,9 @@ export const importProductData = async (opts: ParseWorksheetOpts,
             uuid: uuidv4(),
             class: ASSET_OPERATOR_CLASS_IDENTIFIER,
             assetUuid: asset.uuid,
+            asset,
             operatorUuid: operators[0].uuid,
+            operator: operators[0],
             from_date: new Date(),//new Date(row["month"]),
             share: 1
           }
@@ -439,8 +441,10 @@ export const importProductData = async (opts: ParseWorksheetOpts,
           const ao: AssetOperatorInterface = {
             uuid: uuidv4(),
             class: ASSET_OPERATOR_CLASS_IDENTIFIER,
+            asset,
             assetUuid: asset.uuid,
             operatorUuid: operator.uuid,
+            operator,
             from_date: new Date(),
             share: 1
           }

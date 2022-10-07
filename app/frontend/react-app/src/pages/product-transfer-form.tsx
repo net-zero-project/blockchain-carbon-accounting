@@ -59,7 +59,7 @@ const ProductForm: FC<ProductTransferFormProps> = ({ provider, roles, signedInAd
         setFetchingProduct(true);
         let tracker = await getTrackerDetails(provider, trackerId, signedInAddress);
         if (typeof tracker === "object") {
-          const index = tracker.products.findIndex(p => p.id == productId);
+          const index = tracker.products.findIndex(p => p.id === productId);
           let product = tracker.products[index];
           let productInfo:ProductInfo = {
             available: product.available,
