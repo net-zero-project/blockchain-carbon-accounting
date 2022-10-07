@@ -49,8 +49,9 @@ const RegisteredOperator: ForwardRefRenderFunction<OperatorsHandle, OperatorsPro
   const [ page, setPage ] = useState(1);
   const [ count, setCount ] = useState(0);
   const [ pageSize, setPageSize ] = useState(20);
-  const [ assetQuery, setAssetQuery ] 
-    = useState<string[]>([`operatorUuid,string,${operatorUuid},eq`]);
+
+  const assetQueryBase = [`operatorUuid,string,${operatorUuid},eq,true`]
+  const [ assetQuery, setAssetQuery ] = useState<string[]>(assetQueryBase);
 
   const [showQueryBuilder, setShowQueryBuilder] = useState(false);
 
@@ -63,7 +64,8 @@ const RegisteredOperator: ForwardRefRenderFunction<OperatorsHandle, OperatorsPro
   }
 
   async function handleQueryChanged(_query: string[]) {
-    await fetchAssets(1, pageSize, _query.concat(assetQuery));
+    console.log(_query)
+    await fetchAssets(1, pageSize, _query.concat(assetQueryBase));
   }
 
   function handleOpenOperatorInfoModal(asset: Asset) {
@@ -124,7 +126,7 @@ const RegisteredOperator: ForwardRefRenderFunction<OperatorsHandle, OperatorsPro
     // clear localStorage
     //let localStorage = window.localStorage;
     //localStorage.setItem('token_balances', '');
-    await fetchAssets(page, pageSize, assetQuery);
+    await fetchAssets(page, pageSize, assetQueryBase);
   }
 
   // If address and provider detected then fetch balances
@@ -171,6 +173,7 @@ const RegisteredOperator: ForwardRefRenderFunction<OperatorsHandle, OperatorsPro
         <div className="mt-4">
           <h2 style={{display: 'inline'}}>
             Operator: {operator?.name}&nbsp;
+            ({operator?.asset_count?.toLocaleString('en-US')} assets)
           </h2>
           &nbsp;
           <Button className="mb-3" onClick={switchQueryBuilder} variant={(showQueryBuilder) ? 'dark' : 'outline-dark'}><BsFunnel /></Button>

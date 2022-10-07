@@ -65,7 +65,7 @@ function buildBundlesFromQueries(query: string[]) {
             fieldType: elems[1],
             value: elems[2],
             op: elems[3],
-            union: elems[4] === 'true',
+            conjunction: elems[4] === 'true',
         })
     });
     return bundles
@@ -78,7 +78,7 @@ function buildBundlesFromQuery(query: string[]) {
         fieldType: query[1],
         value: query[2],
         op: query[3],
-        union: query[4] === 'true',
+        conjunction: query[4] === 'true',
     })
     return bundles
 }

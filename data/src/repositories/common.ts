@@ -15,7 +15,8 @@ export type QueryBundle = {
   value: number | string,
   op: string,
   fieldSuffix?: string, // use this if conditioning the same field more than once
-  union?:boolean,
+  conjunction?:boolean, // use this for AND querries. 
+  // Warning! does not support combination of conjuction and disjunction
 }
 
 export interface StringPayload {
@@ -110,6 +111,15 @@ export function buildQueries(
   queries: Array<QueryBundle>, 
   entities?: EntityTarget<any>[],
 ) : SelectQueryBuilder<any> {
+  
+  queries.sort((a, b) => Number(a.conjunction) - Number(b.conjunction) )
+  // sort queries to process disjunction querries first (orWhere) 
+  // and then conjunction querries 
+  // Temp fix to ensure andWhere overrides orWhere querry
+  // Warning !!! TO-DO 
+  // does not suuport combination of mixed multiple disjunction and conjuction groups
+  // Reuqires implmenting Brackets ..
+  
   const len = queries.length
   for (let i = 0; i < len; i++) {
     // if query_field has already been set
@@ -168,12 +178,11 @@ export function buildQueries(
     } else {
       cond = `${alias}.${query.field} ${query.op} :${query_field_label}`
     }
-    if(query.union){
+    if(query.conjunction){
       builder = builder.andWhere(cond, payload)
-    }else{
+    }else{   
       builder = builder.orWhere(cond, payload)
     }
-
   }
   return builder
 }

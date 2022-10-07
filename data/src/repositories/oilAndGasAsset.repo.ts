@@ -1,10 +1,8 @@
 import { OilAndGasAssetDbInterface } from "@blockchain-carbon-accounting/data-common";
 import type { OilAndGasAssetInterface } from "@blockchain-carbon-accounting/oil-and-gas-data-lib";
-//import { OIL_AND_GAS_ASSET_CLASS_IDENTIFIER } from "@blockchain-carbon-accounting/oil-and-gas-data-lib";
-import { DataSource, EntityTarget, SelectQueryBuilder, FindOptionsWhere, ILike } from "typeorm"
+import { DataSource, SelectQueryBuilder, FindOptionsWhere, ILike } from "typeorm"
 import { OilAndGasAsset } from "../models/oilAndGasAsset"
 import { AssetOperator } from "../models/assetOperator"
-import { Product } from "../models/product"
 
 import { buildQueries, QueryBundle } from "./common"
 
@@ -27,6 +25,16 @@ export class OilAndGasAssetRepo implements OilAndGasAssetDbInterface {
 
   public getAsset = async (uuid: string): Promise<OilAndGasAssetInterface | null> => {
     return await this._db.getRepository(OilAndGasAsset).findOneBy({uuid})
+  }
+
+
+  public select = async (
+    bundles: Array<QueryBundle>,
+  ): Promise<Array<OilAndGasAssetInterface>> => {
+    let selectBuilder: SelectQueryBuilder<OilAndGasAsset> = await this._db.getRepository(OilAndGasAsset).createQueryBuilder("oil_and_gas_asset")
+    // category by issuer address
+    selectBuilder = buildQueries('oil_and_gas_asset', selectBuilder, bundles)
+    return selectBuilder.getMany();
   }
 
   public selectPaginated = async (
