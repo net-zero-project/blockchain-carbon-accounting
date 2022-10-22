@@ -1,3 +1,4 @@
+import { AssetOperatorDbInterface } from "@blockchain-carbon-accounting/data-common";
 import type { AssetOperatorInterface } from "@blockchain-carbon-accounting/oil-and-gas-data-lib";
 import { OilAndGasAsset } from "../models/oilAndGasAsset"
 import { AssetOperator } from "../models/assetOperator"
@@ -8,7 +9,7 @@ import { DataSource, SelectQueryBuilder} from "typeorm"
 
 import { buildQueries, QueryBundle } from "./common"
 
-export class AssetOperatorRepo {
+export class AssetOperatorRepo implements AssetOperatorDbInterface{
 
   private _db: DataSource
 
@@ -18,17 +19,10 @@ export class AssetOperatorRepo {
   
   public putAssetOperator = async (doc: AssetOperatorInterface) => {
     try{
-      const repo = this._db.getRepository(AssetOperator)
-      
-      // find existing asset operator relations ... test for uniqueness constraint
-      /*const asset_operators = await repo.createQueryBuilder("asset_operator")
-      .where("asset_operator.assetUuid = :asset", { asset: doc.asset.uuid })
-      .andWhere("asset_operator.operatorUuid = :operator", {  operator: doc.operator.uuid })
-      .getMany()*/
-  
+      const repo = this._db.getRepository(AssetOperator)  
       await repo.save(doc)
       //increment asset_count of operator is newOperator saved
-      doc.operator.asset_count += 1;
+      if(doc.operator.asset_count){doc.operator.asset_count += 1}
       await this._db.getRepository(Operator).save(doc.operator)
     }catch(error){
       throw new Error(`Cannot create asset_operator relation:: ${error}`)       
@@ -114,5 +108,4 @@ export class AssetOperatorRepo {
       .select('oil_and_gas_asset.operator')
       .getCount()
   }
-
 }

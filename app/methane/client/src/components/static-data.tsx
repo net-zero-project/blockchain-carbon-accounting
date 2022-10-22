@@ -1,4 +1,4 @@
-import type { Field, Wallet } from "@blockchain-carbon-accounting/react-app/src/components/static-data"
+import type { Field } from "@blockchain-carbon-accounting/react-app/src/components/static-data"
 export type Asset = {
   name?: string
   latitude: number
@@ -52,6 +52,7 @@ export type Product = {
   source_date?: string;
 }
 
+
 export const OPERATOR_FIELDS: Field[] = [
 {
     alias: 'Name',
@@ -78,21 +79,21 @@ export const ASSET_FIELDS: Field[] = [
 
 export const PRODUCT_FIELDS: Field[] = [
 {
-    alias: 'Name',
-    name: 'name',
+    alias: 'Year',
+    name: 'year',
     type: 'string',
-    ops: ['like']
+    ops: ['eq']
 },
 {
     alias: 'Division',
     name: 'division_type',
     type: 'string',
-    ops: ['eq']
+    ops: ['like']
 },
 {
     alias: 'Division Name',
     name: 'division_name',
     type: 'string',
-    ops: ['eq']
+    ops: ['like']
 }
 ]

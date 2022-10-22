@@ -48,7 +48,7 @@ const ProductForm: FC<ProductFormProps> = ({ provider, roles, limitedMode, track
   async function submit() {
     if (!provider) return;
     let productAmount_formatted = BigInt(productAmount);
-    let productUnitAmount_formatted = BigInt(productUnitAmount);
+    let productUnitAmount_formatted = Number(productUnitAmount);
 
     let result = await productUpdate(
       provider,trackerId,productAmount_formatted,

@@ -23,7 +23,7 @@ export type Address = string | AddressObject;
 export type AddressAndCoordinates = AddressObject & {
   coords?: LatLngLiteral
 };
-export type ActivityType = 'shipment' | 'flight' | 'emissions_factor' | 'natural_gas' | 'electricity' | 'other';
+export type ActivityType = 'shipment' | 'flight' | 'emissions_factor' | 'natural_gas' | 'electricity' | 'industry' | 'other';
 export type ShippingMode = 'air' | 'ground' | 'sea' | 'rail';
 export type Distance = {
   origin?: AddressAndCoordinates,
@@ -43,6 +43,26 @@ export type WithActivityAmount = {
   activity_amount: number,
   activity_uom: string,
 };
+export type WithLocation = {
+  country?: string,
+  division_type?: string,
+  division_name?: string,
+  subdivision_type?: string,
+  subdivision_name?: string,
+  coords?: LatLngLiteral
+};
+
+export const emissionsTypes = ['flaring', 'leakage', 'combustion', 'venting', 'other'] as const;
+export type EmissionsType = typeof emissionsTypes[number];
+export const ghgTypes = ['CO2', 'CH4', 'N20', 'CO2e', 'other'] as const;
+export type GHGType = typeof ghgTypes[number];
+
+export type Industry = {
+  emission_type?: EmissionsType
+  emission_name?: string
+  ghg_type?: GHGType
+  gwp?: number,
+}
 export type Hybrid = {
   emissions_factor_uuid?: string,
   scope?: string,
@@ -87,8 +107,9 @@ export type FlightActivity = ActivityBase & Flight;
 export type NaturalGasActivity = ActivityBase & WithActivityAmount;
 export type OtherActivity = ActivityBase & WithActivityAmount;
 export type ElectricityActivity = ActivityBase & Electricity & WithActivityAmount;
+export type IndustryActivity = ActivityCommon & Industry & WithLocation & WithActivityAmount;
 export type EmissionsFactorActivity = ActivityCommon & (Partial<Flight> & Hybrid);
-export type Activity = ShipmentActivity | FlightActivity | EmissionsFactorActivity | NaturalGasActivity | ElectricityActivity | OtherActivity;
+export type Activity = ShipmentActivity | FlightActivity | EmissionsFactorActivity | NaturalGasActivity | ElectricityActivity | IndustryActivity | OtherActivity;
 export type ActivityResult = {
   distance?: Distance,
   weight?: ValueAndUnit,
@@ -133,6 +154,10 @@ export function is_emissions_factor_activity(a: Activity): a is EmissionsFactorA
 
 export function is_natural_gas_activity(a: Activity): a is NaturalGasActivity {
   return a.type === 'natural_gas';
+}
+
+export function is_industrial_activity(a: Activity): a is IndustryActivity {
+  return a.type === 'industry';
 }
 
 export function is_other_activity(a: Activity): a is OtherActivity {

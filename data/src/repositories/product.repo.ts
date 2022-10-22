@@ -1,12 +1,13 @@
 import { ProductDbInterface } from "@blockchain-carbon-accounting/data-common";
 import type { ProductInterface } from "@blockchain-carbon-accounting/oil-and-gas-data-lib";
-import { DataSource, SelectQueryBuilder, FindOptionsWhere, ILike } from "typeorm"
+import { DataSource, SelectQueryBuilder, FindOptionsWhere, ILike, Brackets } from "typeorm"
+import hash from 'object-hash';
 
 import { Product } from "../models/product"
 import { OilAndGasAsset } from "../models/oilAndGasAsset"
 import { AssetOperator } from "../models/assetOperator"
 
-import { buildQueries, QueryBundle } from "./common"
+import { buildQueries, QueryBundle, ProductTotalsAnnual } from "./common"
 
 export class ProductRepo implements ProductDbInterface {
 
@@ -19,8 +20,12 @@ export class ProductRepo implements ProductDbInterface {
   public putProduct = async (doc: ProductInterface) => {
     try{
       const repo = await this._db.getRepository(Product)
-      await repo.delete(this.makeProductMatchCondition(doc))
-      await this._db.getRepository(Product).save(doc)
+      //const product = await repo.findOneBy(this.makeProductMatchCondition(doc))
+      //await repo.delete(this.makeProductMatchCondition(doc))
+      // merge exsiting product with new doc...
+      //await repo.save({...product,...doc,...{uuid: product!.uuid}})
+      await repo.save(doc)
+
     }catch(error){
       throw new Error(`Cannot create product relation:: ${error}`)       
     }
@@ -37,7 +42,7 @@ export class ProductRepo implements ProductDbInterface {
 
   public count = async (
     bundles: Array<QueryBundle>, 
-    fromAssets: boolean
+    fromAssets?: boolean
   ): Promise<number> => {
     let selectBuilder: SelectQueryBuilder<Product> = 
       await this._db.getRepository(Product).createQueryBuilder("product")
@@ -58,7 +63,7 @@ export class ProductRepo implements ProductDbInterface {
     offset: number, 
     limit: number, 
     bundles: Array<QueryBundle>,
-    fromAssets: boolean
+    fromAssets?: boolean
   ): Promise<Array<ProductInterface>> => {
     let selectBuilder: SelectQueryBuilder<Product> = 
       await this._db.getRepository(Product).createQueryBuilder('product')
@@ -68,8 +73,13 @@ export class ProductRepo implements ProductDbInterface {
       return selectBuilder
         .limit(limit)
         .offset(offset)
-        .innerJoin("product.assets", "oil_and_gas_asset")
+        .innerJoinAndSelect("product.assets", "oil_and_gas_asset")
         .innerJoin("oil_and_gas_asset.asset_operators", "asset_operator")
+        // limit product lists to emissions and production
+        .andWhere(new Brackets(query => {
+          query.where("product.type = 'emissions'")
+          .orWhere("product.type = 'production'")
+        }))
         .orderBy('product.year', 'DESC')
         .getMany();
     }else{
@@ -77,44 +87,88 @@ export class ProductRepo implements ProductDbInterface {
       return selectBuilder
         .limit(limit)
         .offset(offset)
+        // limit product lists to emissions and production
+        .andWhere(new Brackets(query => {
+          query.where("product.type = 'emissions'")
+          .orWhere("product.type = 'production'")
+        }))
         .orderBy('product.year', 'DESC')
         .getMany();
     }
   }
 
-  public getSources = async (
+  public getTotals = async (
     bundles: Array<QueryBundle>,
-    fromAssets: boolean
+    fromAssets?: boolean
+  ): Promise<ProductTotalsAnnual> => {
+    
+    const products:ProductInterface[] = await this.selectPaginated(0,0,bundles,fromAssets);
+
+    /*const names = [...new Set(products.map(p => p.name))];
+    const years = [...new Set(products.map(p => p.year))];
+    const countries = [...new Set(products.map(p => p.country))];
+    const units = [...new Set(products.map(p => p.unit))];*/
+
+    const totals:ProductTotalsAnnual={'null': {uuid:'', class: '', type: 'emissions', name: '', country:'', year:'', unit:'', amount: 0, from_date: new Date(0), thru_date: new Date(0)}};
+
+    for (const product of products){
+      const totalskey = hash(JSON.stringify({name: product.name, year: Number(product.year), country: product.country, unit: product.unit}))
+
+      if(totalskey in totals){
+        totals[totalskey]['amount'] += product.amount
+        if(product.thru_date!>totals[totalskey]['thru_date']!){
+          totals[totalskey]['thru_date']=product.thru_date!
+        }
+        if(product.from_date!<totals[totalskey]['from_date']!){
+          totals[totalskey]['from_date']=product.from_date!
+        }
+      }else{
+        totals[totalskey] = {uuid: '', class: product.class, type: product.type, name: product.name, country: product.country!, year: product.year, from_date: product.from_date!, thru_date: product.thru_date!, unit: product.unit!, amount: product.amount!, source: product.source};
+      }
+    }
+    return totals
+  }
+
+  public getDistinctAttributes = async (
+    bundles: Array<QueryBundle>,
+    field: string,
+    fromAssets?: boolean
   ): Promise<Array<string>> => {
+
+    type ProductFileds = 'year'|'name'|'unit'|'country';
+    const product_field = field as ProductFileds
+
     let selectBuilder: SelectQueryBuilder<Product> = 
       await this._db.getRepository(Product).createQueryBuilder("product")
     let products:ProductInterface[];
+
     if(fromAssets){
       selectBuilder = buildQueries('product', selectBuilder, bundles,
         [OilAndGasAsset, AssetOperator])
       products = await selectBuilder
-        .select('product.source', 'source')
+        .select(`product.${field}`, `${field}`)
         .innerJoin("product.assets", "oil_and_gas_asset")
         .innerJoin("oil_and_gas_asset.asset_operators", "asset_operator")
         .distinct(true)
-        .orderBy('product.source', 'ASC')
+        .orderBy(`product.${field}`, 'ASC')
         .getRawMany()
     }else{
       selectBuilder = buildQueries('product', selectBuilder, bundles)
       products = await selectBuilder
-        .select('product.source', 'source')
+        .select(`product.${field}`, `${field}`)
         .distinct(true)
-        .orderBy('product.source', 'ASC')
+        .orderBy(`${field}`, 'ASC')
         .getRawMany()
     }
-    return Product.toRaws(products!).map(p => p.source!);
+
+    return Product.toRaws(products).map(p => p[`${product_field}`]!);
   }
 
   private makeProductMatchCondition = (doc: Partial<ProductInterface>) => {
     // creates an array of case insensitive queries
     const conditions: FindOptionsWhere<Product> = {}
     if (doc.name) conditions.name = ILike(doc.name)
-    if (doc.type) conditions.type = ILike(doc.type)
+    //if (doc.type) conditions.type = doc.type
     if (doc.amount) conditions.amount = doc.amount
     if (doc.unit) conditions.unit = ILike(doc.unit)
     if (doc.country) conditions.country = ILike(doc.country)

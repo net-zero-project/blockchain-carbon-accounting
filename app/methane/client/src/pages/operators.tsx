@@ -33,7 +33,6 @@ const Operators: ForwardRefRenderFunction<OperatorsHandle, OperatorsProps> = ({ 
   const [selectedOperator, setSelectedOperator] = useState<Operator | undefined>();
   const [selectedOperators, setSelectedOperators] = useState<Operator[]>([]);
   const [fetchingOperators, setFetchingOperators] = useState(false);
-  //const [modalShow, setModalShow] = useState(false);
   const [error, setError] = useState("");
 
   // state vars for pagination
@@ -191,14 +190,10 @@ const Operators: ForwardRefRenderFunction<OperatorsHandle, OperatorsProps> = ({ 
             <tbody>
               {!!selectedOperators &&
                 selectedOperators.map((operator,index) => (
-                  <tr key={operator?.name}>
-                    <td onClick={() => handleOpenOperatorInfoModal(operator)}
-                      onMouseOver={pointerHover}>
-                      {operator.name}
-                    </td>
+                  <tr key={operator?.name} onClick={() => handleOpenOperatorInfoModal(operator)} onMouseOver={pointerHover}>
+                    <td>{operator.name}</td>
                     <td>{operator?.asset_count}</td>
                     <td>
-
                       <Link href={"/operator/"+operator.uuid}>
                         <Button
                           className="float-end"

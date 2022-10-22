@@ -77,7 +77,9 @@ contract CarbonTracker is ERC721, AccessControl, ERC1155Holder {
         uint256 totalProductAmounts;
         uint256 fromDate;
         uint256 thruDate;
+        address createdBy;
         uint256 dateCreated;
+        uint256 dateUpdated;
         string metadata;
         string description;
     }
@@ -115,7 +117,7 @@ contract CarbonTracker is ERC721, AccessControl, ERC1155Holder {
         address auditor;
         uint256 amount;
         uint256 available;
-        // TO-DO : should unitAmount and unit should be stored offline to retain product privacy.
+        // TO-DO : should unitAmount and unit be stored offline to retain product privacy.
         string name;
         string unit;
         uint256 unitAmount;
@@ -268,6 +270,13 @@ contract CarbonTracker is ERC721, AccessControl, ERC1155Holder {
         );
         _;
     }
+    modifier trackeeIsIndustry(uint256 trackerId) {
+        require(
+            net.isIndustry(_trackerData[trackerId].trackee),
+            "CLM8::registeredIndustry: the address is not registered"
+        );
+        _;
+    }
     modifier onlyAdmin() {
         require(
             hasRole(DEFAULT_ADMIN_ROLE, msg.sender),
@@ -311,15 +320,16 @@ contract CarbonTracker is ERC721, AccessControl, ERC1155Holder {
     }
 
     /**
-     * @dev create a tracker Token for trackee.
-     *      _trackTokens will require _isAuditor, msg.sender is an approved auditor of the trackee (see isVerifierApproved[][] mapping)
+     * @dev initialize a tracker Token for trackee. Any address can initilize a tracker. However, only auditors can initialize a tracker with emission tokens
      * @param trackee - address of the registered industry of the trackee
-     * @param tokenIds - array of ids of tracked carbon tokens (direct/indirect/offsets)
+     * @param issuedTo - address that the tracker is ussed to (if different from the trackee address)
+     * @param tokenIds - array of ids of tracked tokens from NET (direct/indirect/offsets)
      * @param tokenAmounts - array of incoming token id amounts (direct/indirect/offsets) matching each carbon token
      * @param fromDate - start date of tracker
      * @param thruDate - end date of tracker
      */
     function track(
+        address issuedTo,
         address trackee,
         uint256[] memory tokenIds,
         uint256[] memory tokenAmounts,
@@ -328,16 +338,30 @@ contract CarbonTracker is ERC721, AccessControl, ERC1155Holder {
         string memory description
     ) public {
         CarbonTrackerDetails storage trackerData = _track(trackee);
-        super._mint(trackee, trackerData.trackerId);
-        return
-            _trackTokens(
-                trackerData,
-                tokenIds,
-                tokenAmounts,
-                fromDate,
-                thruDate,
-                description
-            );
+        super._mint(issuedTo, trackerData.trackerId);
+
+        if (fromDate > 0) {
+            trackerData.fromDate = fromDate;
+        }
+        if (thruDate > 0) {
+            trackerData.thruDate = thruDate;
+        }
+        //if(bytes(metadata).length>0){trackerData.metadata = metadata;}
+        if (bytes(description).length > 0) {
+            trackerData.description = description;
+        }
+        // add tokens if provided
+        if (tokenIds.length > 0) {
+            return
+                _trackTokens(
+                    trackerData,
+                    tokenIds,
+                    tokenAmounts,
+                    fromDate,
+                    thruDate,
+                    description
+                );
+        }
     }
 
     /**
@@ -354,6 +378,7 @@ contract CarbonTracker is ERC721, AccessControl, ERC1155Holder {
         string memory description
     ) public notAudited(trackerId) trackerExists(trackerId) {
         CarbonTrackerDetails storage trackerData = _trackerData[trackerId];
+        trackerData.dateUpdated = block.timestamp;
         return
             _trackTokens(
                 trackerData,
@@ -371,8 +396,10 @@ contract CarbonTracker is ERC721, AccessControl, ERC1155Holder {
      **/
     function _track(address trackee)
         internal
-        isIndustry(trackee) // limit new tracker to industry addresses?
-        returns (CarbonTrackerDetails storage)
+        returns (
+            //isIndustry(trackee) // limit new tracker to industry addresses
+            CarbonTrackerDetails storage
+        )
     {
         // increment trackerId
         _numOfUniqueTrackers.increment();
@@ -380,6 +407,7 @@ contract CarbonTracker is ERC721, AccessControl, ERC1155Holder {
         // create token details
         CarbonTrackerDetails storage trackerData = _trackerData[trackerId];
         trackerData.trackerId = trackerId;
+        trackerData.createdBy = msg.sender;
         trackerData.trackee = trackee;
         trackerData.dateCreated = block.timestamp;
         return trackerData;
@@ -396,7 +424,7 @@ contract CarbonTracker is ERC721, AccessControl, ERC1155Holder {
         uint256 fromDate,
         uint256 thruDate,
         string memory description
-    ) internal {
+    ) internal trackeeIsIndustry(trackerData.trackerId) {
         _isAuditor(trackerData.trackee);
         if (fromDate > 0) {
             trackerData.fromDate = fromDate;
@@ -821,12 +849,15 @@ contract CarbonTracker is ERC721, AccessControl, ERC1155Holder {
         }
     }
 
+    /** 
+ Below are public view functions
+**/
+
     /**
-     * These are public view functions
      * Divides total emissions by product amount to get the emissions factor of the tracker
      * Warning: should never be called within functions that update the network to avoid excessive gas fees
      */
-    function emissionFactor(uint256 trackerId) public view returns (uint256) {
+    function emissionsFactor(uint256 trackerId) public view returns (uint256) {
         CarbonTrackerDetails storage trackerData = _trackerData[trackerId];
         if (trackerData.totalProductAmounts > 0) {
             return (
@@ -928,7 +959,7 @@ contract CarbonTracker is ERC721, AccessControl, ERC1155Holder {
             for (uint256 j = 0; j < productIds.length; j++) {
                 productAmount = productsTracked.amount[productIds[j]];
                 totalEmissions = totalEmissions.add(
-                    productAmount.mul(emissionFactor(trackerIds[i])).div(
+                    productAmount.mul(emissionsFactor(trackerIds[i])).div(
                         decimalsEf
                     )
                 );

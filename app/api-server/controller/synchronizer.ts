@@ -233,7 +233,7 @@ const getNumOfProductTokens = async (opts: OPTS_TYPE): Promise<number> => {
     }
 }
 
-/** Get number of unique tokens on the blockchain. */
+/** Get number of unique trackers on the blockchain. */
 const getNumOfTrackers = async (opts: OPTS_TYPE): Promise<number> => {
     try {
         const result = await getTrackerContract(opts).methods._numOfUniqueTrackers().call();
@@ -418,7 +418,7 @@ export const fillProductTokens = async (opts: OPTS_TYPE, sendEmail: boolean) => 
     return await getCurrentBlock(opts);
 }
 
-/** Sync the tokens from the blockchain and returns the blockchain current block number.
+/** Sync the trackers from the blockchain and returns the blockchain current block number.
 This does not depend on a starting block as we rely on the fact that token ids are sequential.
 */
 export const fillTrackers = async (opts: OPTS_TYPE, sendEmail: boolean) => {
@@ -439,7 +439,7 @@ export const fillTrackers = async (opts: OPTS_TYPE, sendEmail: boolean) => {
     console.log('num of trackers');
     // get the token details from the network
     if (numOfIssuedTrackers > numOfSavedTrackers) {
-        // note: this should only get NEW tokens as tokenId auto-increments, but double check anyway
+        // note: this should only get NEW trackers as tokenId auto-increments, but double check anyway
         for (let trackerId = numOfSavedTrackers + 1; trackerId <= numOfIssuedTrackers; trackerId++) {
             // if the token is not in the database, get the initial details and save it
             const t = await db.getTrackerRepo().selectTracker(trackerId);
