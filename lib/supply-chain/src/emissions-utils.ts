@@ -22,9 +22,9 @@ import {
   Distance, ElectricityActivity, Emissions,
   EmissionsFactorActivity, FlightActivity,
   is_electricity_activity, is_emissions_factor_activity,
-  is_flight_activity, is_natural_gas_activity,
+  is_flight_activity, is_natural_gas_activity, is_industrial_activity,
   is_other_activity, is_shipment_activity, MetadataType,
-  NaturalGasActivity, OtherActivity, ProcessedActivity,
+  NaturalGasActivity, IndustryActivity, OtherActivity, ProcessedActivity,
   ShipmentActivity, ShippingMode, ValueAndUnit
 } from "./common-types";
 import { hash_content } from "./crypto-utils";
@@ -377,6 +377,24 @@ export async function process_natural_gas(
   })
 }
 
+export async function process_industry(
+  _a: IndustryActivity
+): Promise<ActivityResult> {
+  const amount = _a.activity_amount
+  const uom = _a.activity_uom
+  const emissions: Emissions = {
+    amount: {
+      value: weight_in_kg(0, uom),
+      unit: "kgCO2e"
+    }
+  }
+  const results: {
+    emissions: Emissions,
+  } = { emissions };
+
+  return results;
+}
+
 export async function process_electricity(
   a: ElectricityActivity
 ): Promise<ActivityResult> {
@@ -610,6 +628,8 @@ export async function process_activity(activity: Activity) {
     return await process_natural_gas(activity);
   } else if (is_electricity_activity(activity)) {
     return await process_electricity(activity);
+  } else if (is_industrial_activity(activity)) {
+    return await process_industry(activity);
   } else if (is_other_activity(activity)) {
     return await process_other(activity);
   } else {

@@ -6,15 +6,19 @@ import "react-datetime/css/react-datetime.css";
 import { Web3Provider,JsonRpcProvider } from "@ethersproject/providers";
 import { RolesInfo } from "../components/static-data";
 import { trpc, trpcClient } from "../services/trpc";
-import type { 
-  EmissionsFactorInterface 
-} from '@blockchain-carbon-accounting/emissions_data_lib';
+import type { EmissionsFactorInterface } from '@blockchain-carbon-accounting/emissions_data_lib';
 import { FormAddressRow, FormInputRow, FormSelectRow, FormWalletRow } from "../components/forms-util";
 import { calculateEmissionsRequest, createEmissionsRequest } from "../services/api.service";
 import ErrorAlert from "../components/error-alert";
 import SuccessAlert from "../components/success-alert";
 import { Link } from "wouter";
 import AsyncButton from "../components/AsyncButton";
+import { 
+  ActivityType as ActivityTypeBase, 
+  ShippingMode,
+  EmissionsType,
+  GHGType,
+} from "@blockchain-carbon-accounting/supply-chain-lib"
 
 type RequestAuditProps = {
   provider?: Web3Provider | JsonRpcProvider,
@@ -24,8 +28,8 @@ type RequestAuditProps = {
 }
 
 
-type ShipmentMode = 'air' | 'ground' | 'sea' | '';
-type ActivityType = 'flight' | 'shipment' | 'emissions_factor' | 'natural_gas' | 'electricity' | 'other' |''
+type ShipmentMode = ShippingMode | '';
+type ActivityType = ActivityTypeBase | ''
 
 export type EmissionsFactorForm = {
   issued_from: string,
@@ -51,10 +55,21 @@ export type EmissionsFactorForm = {
   level_2: string
   level_3: string
   level_4: string
+  // used to request audit of industry direct emissions
   emissions_factor_uuid: string
+  division_type: string
+  division_name: string
+  subdivision_type: string
+  subdivision_name: string
+  latitude: string
+  longitude: string
+  emissions_type: EmissionsType
+  emissions_name: string
+  ghg_type: GHGType
+  gwp: string
 }
 
-const defaultEmissionsFactorForm: EmissionsFactorForm = {
+export const defaultEmissionsFactorForm: EmissionsFactorForm = {
   issued_from: '',
   activity_type: '',
   ups_tracking: '',
@@ -79,6 +94,16 @@ const defaultEmissionsFactorForm: EmissionsFactorForm = {
   level_3: '',
   level_4: '',
   emissions_factor_uuid: '',
+  division_type: '',
+  division_name: '',
+  subdivision_type: '',
+  subdivision_name: '',
+  latitude: '0',
+  longitude: '0',
+  emissions_type: 'combustion',
+  emissions_name: 'string',
+  ghg_type: 'CO2',
+  gwp: '1',
 } as const;
 
 type EmissionsFactorFormErrors = Partial<EmissionsFactorForm>&{supportingDoc?:string, hasErrors?: boolean}

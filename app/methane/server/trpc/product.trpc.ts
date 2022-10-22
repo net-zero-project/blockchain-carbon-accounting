@@ -54,18 +54,41 @@ export const productRouter = (zQueryBundles:any) => trpc
         }
     },
 })
-.query('sources', {
+.query('distinctAttributes', {
+    input: z.object({
+        bundles: zQueryBundles.default([]),
+        field: z.string().default('name'),
+        fromAssets: z.boolean().default(false),
+    }).default({}),
+    async resolve({input, ctx}){
+        try{
+            const attributes = await ctx.db.getProductRepo()
+                .getDistinctAttributes(input.bundles,input.field,input.fromAssets);
+            return {
+                status: 'success',
+                attributes,
+            }
+        } catch (error){
+            console.error(error)
+            return {
+                status: 'failed',
+                error
+            }
+        }
+    }
+})
+.query('totals', {
     input: z.object({
         bundles: zQueryBundles.default([]),
         fromAssets: z.boolean().default(false),
     }).default({}),
     async resolve({input, ctx}){
         try{
-            const sources = await ctx.db.getProductRepo()
-                .getSources(input.bundles,input.fromAssets);
+            const totals = await ctx.db.getProductRepo()
+                .getTotals(input.bundles,input.fromAssets);
             return {
                 status: 'success',
-                sources,
+                totals,
             }
         } catch (error){
             console.error(error)

@@ -4,7 +4,8 @@ import {
 } from "@blockchain-carbon-accounting/data-common"
 import { 
   importOilAndGasAssets, 
-  importProductData 
+  importProductData,
+  updateProductDates 
 } from "@blockchain-carbon-accounting/oil-and-gas-data-lib"
 import { Presets, SingleBar } from "cli-progress"
 import yargs from "yargs"
@@ -12,6 +13,8 @@ import { hideBin } from "yargs/helpers"
 import type { DbOpts } from "./config"
 import { addCommonYargsOptions, parseCommonYargsOptions } from "./config"
 import { PostgresDBService } from "./postgresDbService"
+import { ethers } from 'ethers';
+import { Wallet } from './models/wallet'
 import { config } from 'dotenv';
 import findConfig from "find-config";
 config({ path: findConfig(".env") || '.' });
@@ -211,7 +214,7 @@ const progressBar = new SingleBar(
     async (argv: any) => {
       console.log("=== Starting load_product_data ...")
       const db = await init(parseCommonYargsOptions(argv))
-      const walletAddress = await setDefaultOperatorWallet(db)
+      const walletAddress = await createRandomOperatorWallet(db)
       await importProductData(argv, progressBar, 
         db.getProductRepo(),
         db.getOperatorRepo(),
@@ -220,6 +223,17 @@ const progressBar = new SingleBar(
         walletAddress)
       const count = await db.getProductRepo().count([]);
       console.log(`=== Done, we now have ${count} product entries in the DB`)
+      await db.close()
+    }
+  )
+  .command(    
+    "set_product_dates",
+    "set product from_date and thru_date using year and month columns",
+    async (argv: any) => {
+      console.log("=== Starting load_product_data ...")
+      const db = await init(parseCommonYargsOptions(argv))
+      await updateProductDates(argv,progressBar,db.getProductRepo())
+      console.log(`=== Done, product dates updated `)
       await db.close()
     }
   )
@@ -234,17 +248,26 @@ const progressBar = new SingleBar(
   .showHelpOnFail(true).argv
 })()
 
-async function setDefaultOperatorWallet(db: PostgresDBService):Promise<string> {
-  let wallet = await db.getWalletRepo().findWalletByAddress(
-      "0xf3AF07FdA6F11b55e60AB3574B3947e54DebADf7");
-    
-  if(!wallet){
-    wallet = await db.getWalletRepo().insertWallet({
-      name: 'Operator Repository',
-      email: "bertrand@tworavens.consulting",
-      address: '0xf3AF07FdA6F11b55e60AB3574B3947e54DebADf7',
-      organization: 'Two Ravens Energy & Climate Consulting Ltd.'
-    })
-  }
+async function createRandomOperatorWallet(db: PostgresDBService):Promise<string> {
+  const password:string = process.env.OPERATOR_REPOSITORY_PASSWORD || 'password';
+  const { password_hash, password_salt } = Wallet.generateHash(password);
+  const verification_token = Wallet.generateVerificationToken();
+
+  // generate the ETH wallet
+  const newAccount = ethers.Wallet.createRandom();
+  const name: string | undefined = 'Operator Repository';
+  const wallet = await db.getWalletRepo().insertWallet({
+    email: "bertrand@tworavens.consulting",
+    organization: 'Two Ravens Energy & Climate Consulting Ltd.',
+    address: newAccount.address,
+    private_key: newAccount.privateKey,
+    public_key: newAccount.publicKey,
+    password_hash,
+    password_salt,
+    verification_token,
+    verification_token_sent_at: new Date(),
+    email_verified: true,
+    name,
+  })
   return wallet.address;
 }

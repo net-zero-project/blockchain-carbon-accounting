@@ -10,7 +10,8 @@ export {
     ProductTokenPayload, 
     QueryBundle,
     TokenPayload, 
-    TrackerPayload
+    TrackerPayload,
+    ProductTotalsAnnual
 } from './src/repositories/common'
 export {
     ActivityEmissionsFactorLookup
@@ -43,6 +44,9 @@ export {
 export {
     Token
 } from './src/models/token'
+export {
+    Tracker
+} from './src/models/tracker'
 export {
     Wallet
 } from './src/models/wallet'

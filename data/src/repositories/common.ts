@@ -12,6 +12,8 @@ export interface BalancePayload {
   transferred: bigint
 }
 
+import type { ProductInterface } from "@blockchain-carbon-accounting/oil-and-gas-data-lib";
+
 export interface StringPayload {
   [key: string] : string | number
 }
@@ -41,6 +43,7 @@ export type EmissionsRequestPayload = Omit<EmissionsRequest, 'uuid' | 'created_a
 export interface TrackerPayload {
   trackerId: number;
   trackee: string;
+  createdBy: string;
   auditor: string;
   totalProductAmounts: bigint;
   totalEmissions: bigint;
@@ -48,8 +51,9 @@ export interface TrackerPayload {
   fromDate: number;
   thruDate: number;
   dateCreated: number;
+  dateUpdated: number;
   // eslint-disable-next-line
-  metadata: Object;
+  metadata: object;
   description: string;
 }
 
@@ -61,31 +65,8 @@ export interface ProductTokenPayload {
   available: bigint;
   name: string;
   unit: string;
-  unitAmount: bigint;
+  unitAmount: number;
   hash: string;
-}
-
-export interface AssetPayload {
-  type: string;
-  country: string;
-  latitude: string;
-  longitude: string;
-  name?: bigint;
-  operator?: string;
-  division_type?: string;
-  division_name?: string;
-  sub_division_name?: string;
-  sub_division_type?: string;
-  status?: string;
-  api?: string;
-  description?: string;
-  source?: string;
-  source_date?: Date;
-  validation_method?: string;
-  validation_date?: Date;
-  product?: string;
-  field?: string;
-  depth?: string;
 }
 
 
@@ -96,6 +77,10 @@ const OP_MAP: Record<string, string> = {
     'gt': '>',
     'vector': 'vector'
 };
+
+export interface ProductTotalsAnnual {
+  [key: string]: ProductInterface
+} 
 
 // eslint-disable-next-line
 export function buildQueries(

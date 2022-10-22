@@ -5,12 +5,13 @@ import {
   Column, Entity,
   PrimaryGeneratedColumn,
   OneToMany,
-  //ManyToOne,
+  JoinColumn,
   Unique
 } from 'typeorm';
 import { AssetOperator } from './assetOperator';
 //import { Wallet } from './wallet';
 import { Product } from './product';
+import { Tracker } from './tracker';
 
 
 @Entity()
@@ -33,6 +34,10 @@ export class Operator implements OperatorInterface {
 
   @Column()
   wallet_address!: string;
+
+  @OneToMany(() => Tracker, (tracker: Tracker) => tracker.operator)
+  @JoinColumn({name: 'wallet_address'})
+  trackers?: Tracker[];
 
   @Column({unique: true})
   name!: string;

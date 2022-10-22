@@ -151,7 +151,7 @@ const App:FC = () => {
                         <IssuedTrackers provider={provider} roles={roles} signedInAddress={params.address||signedInAddress} displayAddress={params.address}/>
                       }</Route>
                       <Route path="/track/:trackerId?">{params=>
-                        <IssueForm provider={provider} roles={roles} signedInAddress={signedInAddress} limitedMode={limitedMode} trackerId={Number(params.trackerId)}/>
+                        <IssueForm provider={provider} roles={roles} signedInAddress={signedInAddress} limitedMode={limitedMode} trackerId={Number(params.trackerId)} /*formSeeds={JSON.parse(params.formSeeds!)}*/ />
                       }</Route>
                       <Route path="/addProduct/:trackerId?">{params=>
                         <ProductForm provider={provider} roles={roles} signedInAddress={signedInAddress} limitedMode={limitedMode} trackerId={Number(params.trackerId)}/>

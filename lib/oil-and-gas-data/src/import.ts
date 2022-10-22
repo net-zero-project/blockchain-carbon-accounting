@@ -323,8 +323,9 @@ export const importProductData = async (opts: ParseWorksheetOpts,
           // check for  operators already stored in DB
           operator = await getOpertor(opts, dbOperator, row['company_name'],walletAddress);
         }
-        if(operator){d['operator']=operator}
-
+        
+        // D'ont associate the asset level (lat/long) product data direclty to the pperator!
+        //if(operator){d['operator']=operator}
 
         if(operator && asset){
           const ao: AssetOperatorInterface = {
@@ -443,8 +444,9 @@ export const importProductData = async (opts: ParseWorksheetOpts,
       };
       d['from_date'] = setFromDate(opts,loader,d);
       d['thru_date'] = setThruDate(opts,loader,d);
-      const metadata={};
-      metadata['company_name'] = row["Company"]
+      const metadata:any={
+        company_name: row["Company"]
+      };
       //create operator
       const operator = await createOperator(opts, dbOperator, row["Company"],walletAddress);
       if(operator){d['operator']=operator}

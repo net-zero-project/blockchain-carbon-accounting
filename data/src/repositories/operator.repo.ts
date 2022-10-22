@@ -52,12 +52,13 @@ export class OperatorRepo implements OperatorDbInterface {
     return selectBuilder
       .limit(limit)
       .offset(offset)
-      .orderBy("asset_count", "DESC")
-      .getMany();
-      /*.innerJoinAndSelect(
+      .innerJoinAndSelect(
         "operator.asset_operators",
         "asset_operators"
-      )*/
+      )
+      .orderBy("asset_count", "DESC")
+      .getMany();
+
   }
 
   public selectOne = async (

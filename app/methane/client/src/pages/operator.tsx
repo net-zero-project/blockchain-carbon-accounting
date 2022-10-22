@@ -1,24 +1,28 @@
 // SPDX-License-Identifier: Apache-2.0
-import {
-  ChangeEvent,
-  MouseEvent,
-  forwardRef,
-  useCallback,
-  useEffect,
-  useImperativeHandle,
-  useState,
-  ForwardRefRenderFunction,
-} from "react";
+import {ChangeEvent, MouseEvent, forwardRef, useCallback, useEffect,useImperativeHandle, useState, ForwardRefRenderFunction } from "react";
 import Spinner from "react-bootstrap/Spinner";
 import Table from "react-bootstrap/Table";
 import Button from 'react-bootstrap/Button';
 import Dropdown from 'react-bootstrap/Dropdown'
 import DropdownButton from 'react-bootstrap/DropdownButton';
+import TableRow from '@mui/material/TableRow';
+import Col from 'react-bootstrap/Col';
+import Row from 'react-bootstrap/Row';
+
 import { BsFunnel } from 'react-icons/bs';
-import { getProducts, getOperator, getProductSources } from '../services/api.service';
+import { JsonRpcProvider, Web3Provider } from "@ethersproject/providers";
+import { getProducts, getOperator, getProductAttributes, getProductTotals } from '../services/api.service';
+
+import type { ProductTotalsAnnual } from "@blockchain-carbon-accounting/data-postgres";
+
 import QueryBuilder from "@blockchain-carbon-accounting/react-app/src/components/query-builder";
+
+import IssuedTrackers from "@blockchain-carbon-accounting/react-app/src/pages/issued-trackers";
 import Paginator from "@blockchain-carbon-accounting/react-app/src/components/paginate";
-import { Wallet } from "@blockchain-carbon-accounting/react-app/src/components/static-data";
+import { Wallet, RolesInfo, Tracker } from "@blockchain-carbon-accounting/react-app/src/components/static-data";
+import { productTypes } from "@blockchain-carbon-accounting/oil-and-gas-data-lib/src/product"
+import SubmissionModal from "@blockchain-carbon-accounting/react-app/src/components/submission-modal";
+
 
 import { PRODUCT_FIELDS, Operator, Product } from "../components/static-data";
 import ProductInfoModal from "../components/product-info-modal";
@@ -32,30 +36,41 @@ const render = (status: Status) => {
 };*/
 
 type OperatorsProps = {
+  provider?: Web3Provider | JsonRpcProvider,
   signedInAddress: string, 
-  operatorUuid: string
+  operatorUuid: string,
+  roles: RolesInfo,
+  signedInWallet?: Wallet,
 }
 
 type OperatorsHandle = {
   refresh: ()=>void
 }
 
-const RegisteredOperator: ForwardRefRenderFunction<OperatorsHandle, OperatorsProps> = ({ signedInAddress,operatorUuid }, ref) => {
+const RegisteredOperator: ForwardRefRenderFunction<OperatorsHandle, OperatorsProps> = ({ provider, signedInAddress,operatorUuid,roles,signedInWallet }, ref) => {
   // Modal display and token it is set to
   const [modalShow, setModalShow] = useState(false);
   const [operator, setOperator] = useState<Operator | undefined>()
-  const [wallet, setWallet] = useState<Wallet | undefined>()
+  const [tracker, setTracker] = useState<Tracker | undefined>()
 
   const [selectedProduct, setSelectedProduct] = useState<Product | undefined>();
   const [selectedProducts, setSelectedProducts] = useState<Product[]>([]);
+
+  const [productTotals, setProductTotals] = useState<ProductTotalsAnnual>();
+
   const [selectFromAssets, setSelectFromAssets] = useState(false);
   const [productCount, setProductCount] = useState(0);
 
   const [fetchingProducts, setFetchingProducts] = useState(false);
   const [error, setError] = useState("");
 
+  const [fetchingTrackers, setFetchingTrackers] = useState(false);
+
   const [productSources,setProductSources] = useState<string[]>([]);
   const [productSource,setProductSource] = useState("");
+  const [productType,setProductType] = useState("");
+
+  const [result, setResult] = useState("");
 
   // state vars for pagination
   const [ page, setPage ] = useState(1);
@@ -69,6 +84,19 @@ const RegisteredOperator: ForwardRefRenderFunction<OperatorsHandle, OperatorsPro
   ]
   const [ productsQuery, setProductsQuery ] = useState<string[]>(productsQueryBase);
   const [showQueryBuilder, setShowQueryBuilder] = useState(false);
+  const [showProductTotals, setShowProductTotals] = useState(false);
+  const [submissionModalShow, setSubmissionModalShow] = useState(false);
+
+  const handleTrackerSelect = tracker => {
+    setTracker(tracker);
+  };
+
+  const handleTrackerCreate = result => {
+    setResult(result)
+    console.log(result)
+    setSubmissionModalShow(true);
+    setModalShow(false);
+  };
 
   async function handlePageChange(_: ChangeEvent<HTMLInputElement>, value: number) {
     await fetchProducts(value, pageSize, productsQuery, selectFromAssets);
@@ -83,15 +111,24 @@ const RegisteredOperator: ForwardRefRenderFunction<OperatorsHandle, OperatorsPro
     await fetchProducts(1, pageSize, _query.concat(productsQueryBase), selectFromAssets);
   }
 
-  function handleOpenOperatorInfoModal(product: Product) {
+  function handleOpenProductInfoModal(product: Product) {
     setSelectedProduct(product);
     setModalShow(true);
   }
 
   const handleSourceSelect = async (source:string)=>{
     setProductSource(source)
+    let _query = productsQuery.concat([`source,string,${source},eq,true`])
+    await fetchProducts(1, pageSize, _query,selectFromAssets);
+    const { totals } = await getProductTotals(_query,selectFromAssets);
+    setProductTotals(totals)
+    console.log(totals)
+  }
+
+  const handleProductTypeSelect = async (type:string)=>{
+    setProductType(type)
     await fetchProducts(1, pageSize, 
-      productsQueryBase.concat([`source,string,${source},eq,true`]), selectFromAssets);
+      productsQuery.concat([`type,string,${type},eq,true`]), selectFromAssets);
   }
 
 
@@ -147,16 +184,23 @@ const RegisteredOperator: ForwardRefRenderFunction<OperatorsHandle, OperatorsPro
     _query: string[],
     _fromAssets: boolean
   ) => {
-    const { sources } = await getProductSources(_query, _fromAssets)
-    setProductSources( sources )
+    const { attributes } = await getProductAttributes(_query, 'source', _fromAssets)
+    setProductSources( attributes )
   },[setProductSources])
 
   function switchQueryBuilder() {
     setShowQueryBuilder(!showQueryBuilder);
   }
 
+  function switchShowProductTotals() {
+    setShowProductTotals(!showProductTotals);
+  }
+
   async function switchFromAssets() {
     setProductSource("")
+    setProductType("")
+    setProductTotals(undefined)
+    setShowProductTotals(false)
     setSelectFromAssets(!selectFromAssets)
     await fetchProductSources(productsQueryBase, !selectFromAssets)
     await fetchProducts(1, 20, productsQueryBase, !selectFromAssets)
@@ -173,10 +217,8 @@ const RegisteredOperator: ForwardRefRenderFunction<OperatorsHandle, OperatorsPro
   useEffect(() => {
     const init = async () => {
       //console.log('init')
-      const {operator, wallet} = await getOperator(operatorUuid);
+      const { operator } = await getOperator(operatorUuid);
       setOperator(operator)
-      console.log(wallet)
-      setWallet(wallet)
       await fetchProductSources( productsQuery, selectFromAssets)
       await fetchProducts(1, 20, productsQuery, selectFromAssets);
       setInitialized(true)
@@ -188,152 +230,156 @@ const RegisteredOperator: ForwardRefRenderFunction<OperatorsHandle, OperatorsPro
       // pending for signedInAddress. display the spinner ...
       setFetchingProducts(true);
     }
-  }, [  signedInAddress, setOperator, setWallet, fetchProducts, fetchProductSources,
-        productsQuery,selectFromAssets, operatorUuid, initialized]);
+  }, [ signedInAddress, setOperator, fetchProducts, fetchProductSources,productsQuery,selectFromAssets, operatorUuid, initialized]);
 
   function pointerHover(e: MouseEvent<HTMLElement>) {
     e.currentTarget.style.cursor = "pointer";
   };
 
-  return (
-    <>
-      {selectedProduct && <ProductInfoModal
-        show={modalShow}
-        product={selectedProduct}
-        onHide={() => {
-          setModalShow(false);
-          setSelectedProduct(undefined);
-        }}
-      />}
-      <p className="text-danger">{error}</p>
+  return (<>
+    {selectedProduct && <ProductInfoModal
+      provider={provider}
+      show={modalShow}
+      signed_in_wallet={signedInWallet}
+      signed_in_address={signedInAddress}
+      product={selectedProduct}
+      operator={operator}
+      tracker={tracker}
+      roles={roles}
+      handleTrackerCreate={handleTrackerCreate}
+      onHide={() => {
+        setModalShow(false);
+        setSelectedProduct(undefined);
+      }}
+    />}
+    <SubmissionModal
+      show={submissionModalShow}
+      title="Request Tracker"
+      body={result}
+      onHide={() => {setSubmissionModalShow(false); setResult("")} }
+    />
+    <p className="text-danger">{error}</p>
+    <div className={fetchingProducts ? "dimmed" : ""}>
 
-      <div className={fetchingProducts ? "dimmed" : ""}>
+      {fetchingProducts && (
+        <div className="text-center my-4">
+          <Spinner animation="border" role="status">
+            <span className="visually-hidden">Loading...</span>
+          </Spinner>
+        </div>
+      )}
 
-        {fetchingProducts && (
+      <div className="mt-4">
+        <h2>
+          Operator: {operator?.name}&nbsp;
+          
+          <Link href={"/assets/"+operator?.uuid}>
+            {operator?.asset_count?.toLocaleString('en-US')} assets
+          </Link>
+        </h2>
+
+        {operator! ? <IssuedTrackers provider={provider} roles={roles} signedInAddress={signedInAddress} displayAddress={operator?.wallet_address} _showTrackers={'unissued'} handleTrackerSelect={handleTrackerSelect}/> : 
           <div className="text-center my-4">
             <Spinner animation="border" role="status">
               <span className="visually-hidden">Loading...</span>
             </Spinner>
           </div>
-        )}
+        }
 
-        <div className="mt-4">
-          <h2>
-            Operator: {operator?.name}&nbsp;
-            
-            <Link href={"/assets/"+operator?.uuid}>
-              {operator?.asset_count?.toLocaleString('en-US')} assets
-            </Link>
-          </h2>
-          <span>
-            {wallet?.name}
-          </span>
-          &nbsp;
-
-          <h3 style={{display: 'inline'}}>
-            {productCount.toLocaleString('en-US')}&nbsp; 
-            {selectFromAssets ? "products from assets" : "aggregate products"}
-          </h3>
-          <Button className="mb-3" onClick={switchQueryBuilder} variant={(showQueryBuilder) ? 'dark' : 'outline-dark'}><BsFunnel /></Button>
-          <div hidden={!showQueryBuilder}>
-            <QueryBuilder
-              fieldList={PRODUCT_FIELDS}
-              handleQueryChanged={handleQueryChanged}
-              conjunction={true}
-            />
-
-          </div>
-          <div>
-            {productSource.length>0 && 
-              <Link href={productSource}>{
-                `Product source: ${productSource.split('/').pop()}`}
-              </Link> 
-            }
-          </div>
-            
-          <Dropdown>
+        <h3 style={{display: 'inline'}}>
+          {selectFromAssets ? "Asset level data points" : "Aggregate data points"}{": "+productCount.toLocaleString('en-US')}&nbsp;
+        </h3>
+        <Dropdown style={{display: 'inline'}}>
+          <DropdownButton
+            title={productType ? productType :"Product types"}
+            style={{display: 'inline'}}
+            id="dropdown-menu-align-right"
+            onSelect={async (value) => { handleProductTypeSelect(value!)}}>
+            { productTypes.slice(0,2).map((type,index) => (
+              <Dropdown.Item key={index} eventKey={type}>{type}</Dropdown.Item>
+            ))}
+          </DropdownButton>
+        </Dropdown>
+        { productTotals &&
+          <Button onClick={switchShowProductTotals}>{showProductTotals ? 'All' : 'Totals'}</Button>
+        }
+        <Button className="float-end mb-3" onClick={switchQueryBuilder} variant={(showQueryBuilder) ? 'dark' : 'outline-dark'}><BsFunnel /></Button>
+        <div hidden={!showQueryBuilder}>
+          <QueryBuilder
+            fieldList={PRODUCT_FIELDS}
+            handleQueryChanged={handleQueryChanged}
+            conjunction={true}
+          />
+        </div>
+        <Row className="mt-2">
+          <Dropdown as={Col} md={9}>
             <DropdownButton
               //alignRight
-              title="Sources"
+              style={{display: 'inline'}}
+              title="Source"
               id="dropdown-menu-align-right"
               onSelect={async (value) => { handleSourceSelect(value!)}}>
               { productSources.map((source,index) => (
-                <Dropdown.Item key={index} eventKey={source}>{source}</Dropdown.Item>
+                <Dropdown.Item key={index} eventKey={source}>{source}</ Dropdown.Item>
               ))}
             </DropdownButton>
+            &nbsp;
+            {productSource.length>0 && 
+                <a href={productSource} target="_blank" rel="noopener noreferrer">{
+                  `Product source: ${productSource.split('/').pop()}`}
+                </a> 
+            }
           </Dropdown>
-          <div>
-            <Button
-              className="float-end"
-              variant="outline-dark"
-              onClick={async () => {await switchFromAssets()}}
-            >
-              { selectFromAssets ? "Product aggregates" : "Products by asset"}
-            </Button>
-          </div>
-
-
-
+          <Col md={3}>
+            <Button className="float-end" variant="outline-dark" onClick={async () => {await switchFromAssets()}} >{ selectFromAssets ? "Data aggregates" : "Data by asset"}</Button>
+          </Col>
+        </Row>
+        {showProductTotals && productTotals &&
           <Table hover size="sm">
-            <thead>
-              <tr>
-                <th>Name</th>
-                <th>Type</th>
-                <th>Amount</th>
-                <th>Unit</th>
-                <th>Year</th>
-                <th>Division</th>
-                <th>name</th>
-                { selectFromAssets && <th>Latitude</th> }
-                { selectFromAssets && <th>Longitude</th> }
-                <th></th>
-              </tr>
-            </thead>
-            <tbody>
-              {!!selectedProducts &&
-                selectedProducts.map((product,index) => (
-                  <tr key={[product?.name,index].join('_')}>
-                    <td onClick={() => handleOpenOperatorInfoModal(product)}
-                      onMouseOver={pointerHover}>
-                      {product.name}
-                    </td>
-                    <td>{product?.type}</td>
-                    <td>{product?.amount * (product?.unit==="%" ? 100:1)}</td>
-                    <td>{product?.unit}</td>
-                    <td>{product?.year}</td>
-                    <td>{product?.division_type}</td>
-                    <td>{product?.division_name}</td>
-                    { selectFromAssets 
-                      && <th>{product?.latitude}</th>}
-                    { selectFromAssets 
-                      && <th>{product?.longitude}</th>}
-                    <td>
-                      <Link href={"/product?name="+product.name}>
-                        <Button
-                          className="float-end"
-                          variant="outline-dark"
-                        >
-                          View Product
-                        </Button>
-                      </Link>
+            <Row className="m" size="sm">
+              <Col md={4} sm={4} xs={6}>Name</Col>
+              <Col md={4} sm={4} xs={6}>Amount</Col>
+              <Col md={2} sm={4} xs={6}>Year</Col>
+              <Col md={2} sm={4} xs={6}>Country</Col>
+            </Row>
+            {Object.keys(productTotals).slice(1).map((key,index) => (
+              <Row className="mt-4" key={`productTotals${index}`} onClick={() =>handleOpenProductInfoModal(productTotals[key])} onMouseOver={pointerHover}>
+                <Col md={4} sm={4} xs={6}>{productTotals[key].name}</Col>
+                <Col md={4} sm={4} xs={6}>{productTotals[key].amount.toLocaleString('en-US')}{productTotals[key].unit}</Col>
+                <Col md={2} sm={4} xs={6}>{productTotals[key].year}</Col>
+                <Col md={2} sm={4} xs={6}>{productTotals[key].country}</Col>
 
-                    </td>
-                  </tr>
-                ))}
-            </tbody>
+              </Row>
+            ))} 
           </Table>
-          {selectedProducts.length !== 0 ? <Paginator 
-            count={count}
-            page={page}
-            pageSize={pageSize}
-            pageChangeHandler={handlePageChange}
-            pageSizeHandler={handlePageSizeChange}
-            loading={fetchingProducts}
-          /> : <></>}
-        </div>
+        }
+        
+        {!!selectedProducts && !showProductTotals && <>
+          <Table hover size="sm"><thead>
+            <tr>
+              <td>Name{/*Col md={4} sm={3} xs={6}*/}</td>
+              <td>Amount{/*Col md={4} sm={3} xs={6}*/}</td>
+              <td>Year{/*Col md={1} sm={3} xs={6}*/}</td>
+
+              { selectFromAssets ? <td>Asset</td> : <td>Division{/*Col md={3} sm={3} xs={6}*/}</td>}
+            </tr></thead>
+            <tbody>{selectedProducts.map((product,index) => (
+              <tr key={[product?.name,index].join('_')}  onClick={() =>handleOpenProductInfoModal(product)} onMouseOver={pointerHover}>
+                <td>{product.name}{/*Col md={4} sm={3} xs={6}*/}</td>
+                <td>{(product.amount * (product?.unit==="%" ? 100:1)).toLocaleString('en-US')} {product?.unit}{/*Col md={4} sm={3} xs={6}*/}</td>
+                <td>{product?.year}{/*Col md={1} sm={3} xs={6}*/}</td>
+                { selectFromAssets ?
+                  <td><a href={`https://maps.google.com/?q=${product?.latitude},${product?.longitude}`} target="_blank" rel="noopener noreferrer" >{product?.assets! && product?.assets?.length>0 && product?.assets[0]!.name!}</a>{/*Col md={3} sm={3} xs={6}*/}</td>:
+                  <td>{product?.division_type}: {product?.division_name}{/*Col md={3} sm={3} xs={6}*/}</td>
+                }
+              </tr>
+            ))}</tbody>
+          </Table>
+          <Paginator count={count} page={page} pageSize={pageSize} pageChangeHandler={handlePageChange} pageSizeHandler={handlePageSizeChange} loading={fetchingProducts}/>
+        </>}
       </div>
-    </>
-  );
+    </div>
+  </>);
 }
 
 

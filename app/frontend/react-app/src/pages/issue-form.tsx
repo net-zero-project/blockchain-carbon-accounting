@@ -27,17 +27,31 @@ type KeyValuePair = {
   value: string
 }
 
-type IssueFormProps = {
+export type FormSeeds = { 
+  address?: string,
+  issuedFrom?: string,
+  tokenTypeId?: number,
+  quantity?: string,
+  fromDate?: Date,
+  thruDate?: Date,
+  description?: string,
+  scope?: number,
+  type?: string,
+  manifest?: KeyValuePair 
+}
+
+export type IssueFormProps = {
   provider?: Web3Provider | JsonRpcProvider,
   signedInAddress: string,
   roles: RolesInfo,
   limitedMode: boolean,
   signedInWallet?: Wallet,
   trackerId?: number,
-  requestId?: string
+  requestId?: string,
+  formSeeds?: FormSeeds
 }
 
-const IssueForm: FC<IssueFormProps> = ({ provider, roles, signedInAddress, limitedMode, signedInWallet, trackerId, requestId}) => {
+const IssueForm: FC<IssueFormProps> = ({ provider, roles, signedInAddress, limitedMode, signedInWallet, trackerId, requestId, formSeeds}) => {
   const [selectedPendingEmissions, setSelectedPendingEmissions] = useState<EmissionsRequest>();
   const [submissionModalShow, setSubmissionModalShow] = useState(false);
   const [createModalShow, setCreateModalShow] = useState(false);
@@ -52,22 +66,22 @@ const IssueForm: FC<IssueFormProps> = ({ provider, roles, signedInAddress, limit
   const [issuedFrom, setIssuedFrom] = useState('');
 
   const andTrack = useMemo(()=> (typeof trackerId !== 'undefined'), [trackerId]);
-  const [tokenTypeId, setTokenTypeId] = useState(1);
-  const [quantity, setQuantity] = useState("");
-  const [fromDate, setFromDate] = useState<Date|null>(null);
-  const [thruDate, setThruDate] = useState<Date|null>(null);
-  const [description, setDescription] = useState("");
+  const [tokenTypeId, setTokenTypeId] = useState(formSeeds?.tokenTypeId!);
+  const [quantity, setQuantity] = useState(formSeeds?.quantity!);
+  const [fromDate, setFromDate] = useState<Date|null>(formSeeds?.fromDate!);
+  const [thruDate, setThruDate] = useState<Date|null>(formSeeds?.thruDate!);
+  const [description, setDescription] = useState(formSeeds?.description!);
   const [trackerDescription, /*setTrackerDescription*/] = useState("");
   const [result, setResult] = useState("");
 
-  const [scope, setScope] = useState<number|null>(null);
-  const [type, setType] = useState("");
+  const [scope, setScope] = useState<number|null>(formSeeds?.scope!);
+  const [type, setType] = useState(formSeeds?.type!);
 
   const [metajson, setMetajson] = useState("");
   const [metadata, setMetadata] = useState<KeyValuePair[]>([]);
 
   const [manifestjson, setManifestjson] = useState("");
-  const [manifest, setManifest] = useState<KeyValuePair[]>([]);
+  const [manifest, setManifest] = useState<KeyValuePair[]>(formSeeds?.manifest ? [formSeeds?.manifest] : []);
 
   // Calldata
   const [calldata, setCalldata] = useState("");
@@ -362,7 +376,7 @@ const IssueForm: FC<IssueFormProps> = ({ provider, roles, signedInAddress, limit
     const _manifest = castManifest(manifest);
     let result;
     if(andTrack && typeof trackerId !== 'undefined'){
-      result = await issueAndTrack(provider, issuedFrom, address, Number(trackerId), trackerDescription, tokenTypeId, quantity_formatted, fromDate, thruDate, _metadata, _manifest, description);
+      result = await issueAndTrack(provider, issuedFrom, address, Number(trackerId), trackerDescription, tokenTypeId, quantity_formatted, fromDate, thruDate, _metadata, _manifest, description, signedInWallet?.private_key || '');
     }else{
       result = await issue(provider, issuedFrom, address, tokenTypeId, BigInt(quantity_formatted), fromDate, thruDate, _metadata, _manifest, description, signedInWallet?.private_key || '');
       if (requestId) {
@@ -394,7 +408,6 @@ const IssueForm: FC<IssueFormProps> = ({ provider, roles, signedInAddress, limit
 
   return (roles.hasAnyRole && provider!==null) ? (
     <>
-
       <CreateProposalModal
         show={createModalShow}
         title="Create a proposal"
@@ -652,7 +665,7 @@ const IssueForm: FC<IssueFormProps> = ({ provider, roles, signedInAddress, limit
           <Button className="label-button" variant="outline-dark" onClick={addFieldManifest}><BsPlus /></Button>
         </Form.Group>
         <Form.Group>
-          {manifest.map((field, key) =>
+          {manifest! && manifest.map((field, key) =>
             <Row key={key} className="mt-2">
               <Col md={3}>
                 <Form.Control
