@@ -57,6 +57,7 @@
     "extends": "react-app"
   },
   "scripts": {
+    "prod": "serve -s build",
     "analyze": "source-map-explorer 'build/static/js/*.js'",
     "build": "react-app-rewired build",
     "eject": "react-app-rewired eject",
