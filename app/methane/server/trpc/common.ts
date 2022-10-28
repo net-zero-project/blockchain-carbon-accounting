@@ -5,12 +5,15 @@ import * as trpcExpress from '@trpc/server/adapters/express';
 import { TRPC_ERROR_CODE_KEY } from '@trpc/server/dist/declarations/src/rpc/codes';
 import { z, ZodError } from 'zod';
 import { assetRouter } from './asset.trpc';
+import { operatorRouter } from './operator.trpc';
+import { productRouter } from './product.trpc';
 
 export const zQueryBundles = z.array(z.object({
     field: z.string(),
     fieldType: z.string(),
     value: z.string().or(z.number()),
     op: z.string(),
+    conjunction: z.boolean(),
 }))
 
 // created for each request, here set the DB connector
@@ -62,6 +65,8 @@ const createRouter = () => {
 
 const appRouter = createRouter()
   .merge('asset.', assetRouter(zQueryBundles))
+  .merge('operator.', operatorRouter(zQueryBundles))
+  .merge('product.', productRouter(zQueryBundles))
 
 export type AppRouter = typeof appRouter
 

@@ -2,7 +2,9 @@ import "reflect-metadata"
 import { DbOpts } from './config'
 import { DataSource } from "typeorm"
 import { EmissionsFactor } from "./models/emissionsFactor"
+import { Operator } from "./models/operator"
 import { OilAndGasAsset } from "./models/oilAndGasAsset"
+import { AssetOperator } from "./models/assetOperator"
 import { UtilityLookupItem } from "./models/utilityLookupItem"
 import { Wallet } from "./models/wallet"
 import { Token } from "./models/token"
@@ -29,6 +31,8 @@ export const initDb = async (opts: DbOpts) => {
       Sync,
       EmissionsFactor,
       OilAndGasAsset,
+      Operator,
+      AssetOperator,
       UtilityLookupItem,
       Wallet,
       Balance,

@@ -28,6 +28,7 @@ export type Token = {
   tokenId: number
   tokenTypeId: number
   tokenType?: string
+  trackerId?: number
   issuedBy: string
   issuedFrom: string
   issuedTo: string
@@ -44,31 +45,44 @@ export type Token = {
   type: string
   isMyIssuedToken?: boolean
 }
-
+//export interface Tracker extends TrackerPayload {
+// TO-DO use extends for object like type from /data-postgres/common
 export type Tracker = {
   trackerId: number
   trackee: string
+  createdBy?: string
   auditor: string
   fromDate?: number
   thruDate?: number
-  metadata: string
+  metadata: Object
   description: string
+  dateCreated: number
+  dateUpdated?: number
   totalEmissions: bigint
-  myProductsTotalEmissions: bigint
-  products:{ 
-    ids: number[]
-    names: string[]
-    myBalances: bigint[]
-    amounts: number[]
-    available: number[]
-    emissionFactors: number[]
-    conversions: number[]
-    units: string[]
+  totalProductAmounts: bigint
+  myProductsTotalEmissions?: number
+  products?: ProductToken[]
+  tokens?: Token[] & {
+    amounts?: bigint[]
+    myAmounts?: number[]
+    details?: any[]
   }
-  tokens:{
-    amounts: number[]
-    details: any[]
-  }
+}
+
+export type ProductToken = {
+  productId: number
+  trackerId: number
+  auditor: string
+  name: string
+  amount: bigint
+  available: bigint
+  myBalance?: number
+  emissionsFactor?: number
+  conversion?: number
+  unit?: string
+  unitAmount?: number
+  unitAvailable?: number
+
 }
 
 export type Balance = {
@@ -139,9 +153,7 @@ export const RoleEnum = {
   /** Emissions Auditor role. aka: AE */
   EmissionsAuditor: 'Emissions Auditor',
   /** Industry role, aka: REGISTERED_INDUSTRY */
-  Industry: 'Industry',
-  /** Industry Dealer role, aka: CarbonTracker / REGISTERED_INDUSTRY_DEALER */
-  IndustryDealer: 'Industry Dealer'
+  Industry: 'Industry'
 } as const
 
 export const rolesInfoToArray = (roles: RolesInfo|null): Role[] => {

@@ -2,29 +2,39 @@ import {
   OilAndGasAssetInterface, 
   OIL_AND_GAS_ASSET_CLASS_IDENTIFIER 
 } from "./oilAndGasAsset"
+
 import { 
   ProductInterface, 
+  ProductType,
   PRODUCT_CLASS_IDENTIFIER 
 } from "./product";
 
 import { 
-  ProductDbInterface 
-} from '@blockchain-carbon-accounting/data-common';
+  OperatorInterface, 
+  OPERATOR_CLASS_IDENTIFIER 
+} from "./operator";
+
+import {
+  matchAsset
+} from "./matchAssets"
+import {
+  CATF_COMPANY_NAME_SEARCH
+}from "./nameMapping"
+import { 
+  ASSET_OPERATOR_CLASS_IDENTIFIER,
+  AssetOperatorInterface
+} from "./assetOperator";
 
 import { 
-  parseWorksheet, 
-  getStateNameMapping, 
-  LoadInfo 
-} from "@blockchain-carbon-accounting/data-common";
-
-import type { 
+  parseWorksheet,
   ParseWorksheetOpts,
+  getStateNameMapping, 
+  LoadInfo,
+  AssetOperatorDbInterface,
+  OilAndGasAssetDbInterface,
+  OperatorDbInterface,
+  ProductDbInterface,
 } from "@blockchain-carbon-accounting/data-common";
-
-
-import { 
-  PostgresDBService 
-} from '@blockchain-carbon-accounting/data-postgres';
 
 import { SingleBar } from "cli-progress";
 import { v4 as uuidv4 } from 'uuid';
@@ -33,18 +43,18 @@ import { parser } from 'stream-json';
 import { streamArray } from 'stream-json/streamers/StreamArray';
 import { pick } from'stream-json/filters/Pick';
 //import { batch } from'stream-json/utils/Batch';
-import fs from'fs';
+import fs from 'fs';
 
 const months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 
 export const importOilAndGasAssets = async (opts: ParseWorksheetOpts, 
-  progressBar: SingleBar, db: PostgresDBService) => {
+  progressBar: SingleBar, db: OilAndGasAssetDbInterface) => {
 
   if (opts.format === "US_asset_data") {
     const loader = new LoadInfo(opts.file, opts.sheet, progressBar, 1506238);
+      
     const pipeline = chain([
       fs.createReadStream('./'+opts.file),
-        //new URL("https://services1.arcgis.com/Hp6G80Pky0om7QvQ/arcgis/rest/services/Oil_and_Natural_Gas_Wells/FeatureServer/0/query?outFields=*&where=1%3D1&f=geojson")),
       parser(),
       pick({filter: "features"}),
       streamArray(),
@@ -52,18 +62,23 @@ export const importOilAndGasAssets = async (opts: ParseWorksheetOpts,
       async (data)  => {
         //loader  
         // import data for each valid stream, eg:
-        //console.log(data)
         //for (const row of data) {
           const prop = data.value.properties
           //if (!prop) { loader.incIgnored('Undefined row'); continue; }
           //if (!prop["Data Year"]) { loader.incIgnored('Missing "Data Year"'); continue; }
           //if (prop["Data Year"] == "YEAR") { loader.incIgnored('Header row'); continue; }
           opts.verbose && console.log("-- Prepare to insert from ", prop);
+          const details = JSON.stringify({
+            "product": prop["PRODTYPE"],
+            "field": prop["FILED"],
+            "depth": prop["TOTDEPTH"] !== '-999' ? prop["TOTDEPTH"] : null,
+          });
           const d: OilAndGasAssetInterface = {
             uuid: uuidv4(),
             class: OIL_AND_GAS_ASSET_CLASS_IDENTIFIER,
             type: prop["TYPE"],
             country: prop["COUNTRY"],
+            //location: {type: "Point", "coordinates": [0,0]},
             latitude: prop["LATITUDE"],
             longitude: prop["LONGITUDE"],
             name: prop["NAME"],//prop["NAME"] !== "NOT AVAILABLE" ? prop["NAME"] : null,
@@ -79,35 +94,24 @@ export const importOilAndGasAssets = async (opts: ParseWorksheetOpts,
             source_date: new Date(prop["SOURCEDATE"]),
             validation_method: prop["VAL_METHOD"],
             validation_date: new Date(prop["VAL_DATE"]),
-            product: prop["PRODTYPE"],
-            field: prop["FILED"],
-            depth: prop["TOTDEPTH"] !== '-999' ? prop["TOTDEPTH"] : null,
+            metadata: details
           };
-          await db.getOilAndGasAssetRepo().putAsset(d);
+          await db.putAsset(d);
           loader.incLoaded();
-        //}
-        return;   
+        //} 
       }
     ]);
-    //console.log(pipeline)
-    
-    let counter = 0;
-    //pipeline.on('data', (data:any) => console.log(data));
-    pipeline.on('data', () => 
-      ++counter
-    );
-    pipeline.on('end', async () => {
-      loader.done();
-      console.log(`Loaded ${counter} entries to oil_and_gas_asset table.`);
-      const count = await db.getOilAndGasAssetRepo().countAssets([])
-      console.log(`=== Done, we now have ${count} OilAndGasAssets in the DB`)
-      await db.close()
-    })
+    return {pipeline,loader};
   }
 }
 
-export const importFlareData = async (opts: ParseWorksheetOpts, 
-  progressBar: SingleBar, db: ProductDbInterface) => {
+export const importProductData = async (opts: ParseWorksheetOpts, 
+  progressBar: SingleBar, 
+  db: ProductDbInterface, 
+  dbOperator: OperatorDbInterface,
+  dbAsset: OilAndGasAssetDbInterface,
+  dbAssetOperator: AssetOperatorDbInterface,
+  walletAddress: string) => {
 
   if (opts.format === "VIIRS") {
     //if(opts.year === undefined){return Error('no year provided')}
@@ -135,23 +139,37 @@ export const importFlareData = async (opts: ParseWorksheetOpts,
         "sector": row["Type"].toString(),
         "clearObs": clear_obs?.toString()
       });
+
       // generate a unique for the row
       const d: ProductInterface = {
-        class: PRODUCT_CLASS_IDENTIFIER,
-        type: "Flaring",
         uuid: uuidv4(),
-        name: "methane",
-        amount: amount?.toString(),
+        class: PRODUCT_CLASS_IDENTIFIER,
+        type: "emissions" as ProductType,
+        name: "methane flaring",
+        amount: Number(amount),
         unit: "bcm",
         year: opts.year,
         country: country,
-        latitude: row["Latitude"].toString(),
-        longitude: row["Longitude"].toString(),
+        latitude: row["Latitude"],
+        longitude: row["Longitude"],
         metadata: details,
-        description: "VIIRS satelite flaring data",
+        description: "VIIRS satellite flaring data",
         source: opts.source || opts.file
       };
-      await db.putProduct(d);
+      d['from_date'] = setFromDate(opts,loader,d);
+      d['thru_date'] = setThruDate(opts,loader,d);
+      const asset = await matchAsset(
+        dbAsset,
+        row["Latitude"],
+        row["Longitude"],
+        country
+      ); 
+      if(asset){ d['assets']=[asset] }
+      try{
+        await db.putProduct(d);
+      }catch(error){
+        opts.verbose && console.warn(error)
+      }
       loader.incLoaded();
     }
     loader.done();
@@ -160,7 +178,13 @@ export const importFlareData = async (opts: ParseWorksheetOpts,
     opts.cellDates = true;
     //if(opts.year === undefined){return Error('no year provided')}
     const data = parseWorksheet(opts);
-    const loader = new LoadInfo(opts.file, opts.sheet, progressBar, data.length);
+    let states:string[]=[];
+    if(opts.sheet === "Data 1"){
+      states = ["Alaska","Arkansas","California","Colorado","Federal Offshore--Gulf of Mexico","Kansas","Louisiana","Montana","New Mexico","North Dakota","Ohio","Oklahoma","Pennsylvania","Texas","Utah","West Virginia","Wyoming"]
+    }else if(opts.sheet === "Data 2"){
+      states = ["Other States","Alabama","Arizona","Florida","Idaho","Illinois","Indiana","Kentucky","Maryland","Michigan","Mississippi","Missouri","Nebraska","Nevada","New York","Oregon","South Dakota","Tennessee","Virginia"]
+    }
+    const loader = new LoadInfo(opts.file, opts.sheet, progressBar, data.length*states.length);
     for (const row of data) {
       if (!row) { loader.incIgnored('Undefined row'); continue; }
 
@@ -176,30 +200,47 @@ export const importFlareData = async (opts: ParseWorksheetOpts,
         amountHeader = ["U.S.",opts.name,opts.type,"("+opts.unit+")"].join(" ")
       }
       if (!opts.name) { loader.incIgnored('Undefined name'); continue; }
-      if (!opts.type) { loader.incIgnored('Undefined type'); continue; }
       if (!opts.unit) { loader.incIgnored('Undefined unit'); continue; }
-      
+      let type;
+      switch(opts.type) {
+        case 'Field Production': case 'Marketed Production': case 'Production': case 'Gross Withdrawals': 
+          type = 'production' as ProductType;
+          break
+        case 'Vented and Flared':
+          type = 'emissions' as ProductType;
+          break
+        case 'Repressuring':
+          type = 'storage' as ProductType;
+          break
+        default: 
+      }
+      if (!type) { loader.incIgnored('Undefined type'); continue; }
+
       const d: ProductInterface = {
-        class: PRODUCT_CLASS_IDENTIFIER,
-        type: opts.type,
         uuid: uuidv4(),
-        name: opts.name,
+        class: PRODUCT_CLASS_IDENTIFIER,
+        type: type,
+        name: [opts.name,opts.type].join(' '),
         unit: opts.unit,
-        amount: row[amountHeader],
+        amount: Number(row[amountHeader]),
         year: row["Date"].getFullYear().toString(),
         month: months[row["Date"].getMonth()],
-        from_date: row["Date"],
         country: "USA",
         description: "EIA oil & gas data",
         source: opts.source || opts.file
       };
-      let states:string[]=[];
+      d['from_date'] = setFromDate(opts,loader,d);
+      d['thru_date'] = setThruDate(opts,loader,d);
+      
       if(opts.sheet === "Data 1"){
         if (!row[amountHeader]) { loader.incIgnored('Undefined amount'); } 
-        else{ await db.putProduct(d) }
-        states = ["Alaska","Arkansas","California","Colorado","Federal Offshore--Gulf of Mexico","Kansas","Louisiana","Montana","New Mexico","North Dakota","Ohio","Oklahoma","Pennsylvania","Texas","Utah","West Virginia","Wyoming"]
-      }else if(opts.sheet === "Data 2"){
-        states = ["Other States","Alabama","Arizona","Florida","Idaho","Illinois","Indiana","Kentucky","Maryland","Michigan","Mississippi","Missouri","Nebraska","Nevada","New York","Oregon","South Dakota","Tennessee","Virginia"]
+        else{
+          try{
+            await db.putProduct(d);
+          }catch(error){
+            opts.verbose && console.warn(error)
+          } 
+        }
       }
       d["division_type"] = "state";
       for (const state of states){
@@ -207,8 +248,12 @@ export const importFlareData = async (opts: ParseWorksheetOpts,
         amountHeader = [state,opts.name,opts.type,"("+opts.unit+")"].join(" ");
         if (!row[amountHeader]) { loader.incIgnored('Undefined amount'); continue; }
         d["division_name"] = state;
-        d["amount"] = row[amountHeader];
-        await db.putProduct(d);
+        d["amount"] = Number(row[amountHeader]);
+        try{
+          await db.putProduct(d);
+        }catch(error){
+          opts.verbose && console.warn(error)
+        } 
       }
       loader.incLoaded();
     }
@@ -238,38 +283,102 @@ export const importFlareData = async (opts: ParseWorksheetOpts,
       if (!row) { loader.incIgnored('Undefined row'); continue; }
       
       opts.verbose && console.log("-- Prepare to insert from ", row);
+
       const d: ProductInterface = {
-        class: PRODUCT_CLASS_IDENTIFIER,
         uuid: uuidv4(),
+        class: PRODUCT_CLASS_IDENTIFIER,
         source: opts.source || opts.file,
         description: "Flare Monitor oil & gas data",
-        type: '',
+        type: 'emissions' as ProductType,
         name: '',
         unit: '',
-        amount: '0'
+        amount: 0
       };
-      if (row["estimated_flare_volume_mcf"]) {        
-        d["amount"]=row["estimated_flare_volume_mcf"]; 
+      if (row["estimated_flare_volume_mcf"]) {     
+        d["name"]='Methane Flaring';  
+        d['unit']='tons CO2e';
+        d["amount"]=Number(row["equivalent_co2_released_metric_tons"]); 
         d["year"]=row["month"].getFullYear().toString();
         d["month"]=months[row["month"].getMonth()];
-        d["from_date"]=row["month"];
         d["country"]="USA";
         d["division_type"]="State";
         d["division_name"]=getStateNameMapping(row["state"]);
         d["longitude"]=row["longitude"];
         d["latitude"]=row["latitude"];
-        d["metadata"]=JSON.stringify({
+        d['from_date'] = setFromDate(opts,loader,d);
+        d['thru_date'] = setThruDate(opts,loader,d);
+        const asset = await matchAsset(
+          dbAsset,
+          row["latitude"],
+          row["longitude"],
+          'United States'
+        ); 
+        if(asset){d['assets'] = [asset]}
+        // check for operate assigned to identified asset
+        let operator: null | OperatorInterface=null;
+        const operatorMapping = asset?.assetOperators?.map(ao =>(ao.operator))[0];
+        if(operatorMapping){operator=operatorMapping}
+
+        if(!operator){
+          // check for  operators already stored in DB
+          operator = await getOpertor(opts, dbOperator, row['company_name'],walletAddress);
+        }
+        
+        // D'ont associate the asset level (lat/long) product data direclty to the pperator!
+        //if(operator){d['operator']=operator}
+
+        if(operator && asset){
+          const ao: AssetOperatorInterface = {
+            uuid: uuidv4(),
+            class: ASSET_OPERATOR_CLASS_IDENTIFIER,
+            assetUuid: asset.uuid,
+            operatorUuid: operator.uuid,
+            operator,
+            from_date: d['from_date']!,//new Date(row["month"]),
+            share: 1
+          }
+          try{
+            await dbAssetOperator.putAssetOperator(ao);
+          }catch(error){
+            opts.verbose && console.warn(error)
+          }
+        }
+        const metadata = {
           type: row["type"],
           sum_rh: row["sum_rh"],
           radius: row["radius"],
           company: row["company_name"],
           cid: row["cid"],
           wells: row["wells"],
-          equivalent_co2_released_metric_tons: row["equivalent_co2_released_metric_tons"]
-        })
-        await db.putProduct(d); 
+          estimated_flare_volume_mcf: row["estimated_flare_volume_mcf"],
+          flare_week: null
+        }
+        if(row['flare_week']){
+          metadata.flare_week = row['flare_week'];
+        }
+        d["metadata"]=JSON.stringify(metadata);
+        
+        try{
+          await db.putProduct(d); 
+        }catch(error){
+          opts.verbose && console.warn(error)
+        }
         loader.incLoaded();
       }else if(row["product_type"]){
+        let type;
+        switch(row['product_type']) {
+          case 'produced gas': case 'produced oil': 
+            type = 'production' as ProductType;
+            break
+          case 'flared gas': case 'reported equivalent co2 released': case 'equivalent co2 released monthly': case 'equivalent co2 released daily': case 'sat estimated volume': case 'reported volume': case 'sat estimate lower': case 'sat estimate upper': case 'blended estimate': case 'blended estimate equivalent co2 released':
+            type = 'emissions' as ProductType;
+            break
+          default: 
+        }
+        if (!type) { loader.incIgnored('Undefined type'); continue; }
+        d['type']=type
+        const operator = await getOpertor(opts, dbOperator, row["company_name"],walletAddress);
+        if(operator){d["operator"]=operator;}
         if (row["basin"]){
           d["division_type"]="basin";
           d["division_name"]=row["basin"];
@@ -283,15 +392,20 @@ export const importFlareData = async (opts: ParseWorksheetOpts,
             ticker: row["ticker"]
           });
         }else{loader.incIgnored('No col identifier'); continue}
-        d["type"]=row["product_type"];
         d["name"]=row["product_type"];
         d["unit"]=row["product_units"];
         for(const col of cols){
           if (!row[col]) {loader.incIgnored('Undefined col amount'); continue } 
-          d["amount"]=row[col];
+          d["amount"]=Number(row[col]);
           d["year"] = col.substr(col.length - 4);
           d["month"] = col.slice(0,3);
-          await db.putProduct(d);
+          d['from_date'] = setFromDate(opts,loader,d);
+          d['thru_date'] = setThruDate(opts,loader,d);
+          try{
+            await db.putProduct(d);
+          }catch(error){
+            opts.verbose && console.warn(error)
+          } 
           d["uuid"] = uuidv4();
           loader.incLoaded();
         } 
@@ -310,75 +424,248 @@ export const importFlareData = async (opts: ParseWorksheetOpts,
       "NGSI Methane Intensity",  "GHG Emissions Intensity", 
       "Process & Equipment Vented", "Process & Equipment Flared",  
       "Fugitive",  "Other Combustion",  "Associated Gas Vented/Flared"]; 
-    const loader = new LoadInfo(opts.file, opts.sheet, progressBar, data.length*cols.length);
-    for (const row of data) {
-      
+
+    const skip_rows = 0*3240/cols.length;
+    const loader = new LoadInfo(opts.file, opts.sheet, progressBar, (data.length-skip_rows)*cols.length);
+    for (const row of data.slice(skip_rows)) {
       if (!row) { loader.incIgnored('Undefined row'); continue; }
-      
       opts.verbose && console.log("-- Prepare to insert from ", row);
       const d: ProductInterface = {
         uuid: uuidv4(),
         class: PRODUCT_CLASS_IDENTIFIER,
         source: opts.source || opts.file,
         description: "CATF U.S. O&G Benchmarking",
-        type: '',
+        type: 'emissions' as ProductType,
         name: '',
         unit: '',
-        amount: '0',
+        amount: 0,
         year: row["Data Year"],
-        division_type: "Company",
-        division_name: row["Company"],
         country: "USA",
       };
+      d['from_date'] = setFromDate(opts,loader,d);
+      d['thru_date'] = setThruDate(opts,loader,d);
+      const metadata:any={
+        company_name: row["Company"]
+      };
+      //create operator
+      const operator = await createOperator(opts, dbOperator, row["Company"],walletAddress);
+      if(operator){d['operator']=operator}
       if(row["Basin"]){
-        d["sub_division_name"]="basin";
-        d["sub_division_type"]=row["Basin"];
+        d["division_type"]="basin";
+        d["division_name"]=row["Basin"];
       }
       for (const col of cols){
-        
-        d["amount"] = row[col];
+        d["amount"] = Number(row[col]);
         if (!row[col]) { loader.incIgnored('Undefined col'); continue; }
         switch(col) {
           case "CO2": case "CH4": case "N2O": case "GHG" :
-            d["type"] = "Emissions";
+            d["type"] = 'emissions' as ProductType;
             d["unit"] = "MT";
             d["name"] = col;
-            d["metadata"] = JSON.stringify({
-              "GWP": "IPCC AR6 100-year"
-            });
+            metadata["GWP"] = "IPCC AR6 100-year"
+            break;
+          case "Process & Equipment Vented": case "Process & Equipment Flared": case "Fugitive": case "Other Combustion": case "Associated Gas Vented/Flared":
+            d["type"] = 'emissions' as ProductType;
+            d["unit"] = "MT CO2e";
+            d["name"] = col;
+            metadata["GWP"]= "IPCC AR6 100-year";
             break;
           case "Gas (MBOE)": case "Oil (MBOE)":
-            d["type"] = "Production";
+            d["type"] = "production" as ProductType;
             d["unit"] = "MBOE";
             d["name"] = col.slice(0,3);
             break;
           case "NGSI Methane Intensity":
-            d["type"] = "Performance metric";
+            d["type"] = "credential" as ProductType;
             d["name"] = col;
             d["unit"] = "%";
             break;
           case "GHG Emissions Intensity":
-            d["type"] = "Performance metric";
+            d["type"] = "credential" as ProductType;
             d["unit"] = "ton CO2e/BOE";
             d["name"] = col;
             break;
-          case "Process & Equipment Vented": case "Process & Equipment Flared": case "Fugitive": case "Other Combustion": case "Associated Gas Vented/Flared":
-            d["type"] = "Emissions";
-            d["unit"] = "MT CO2e";
-            d["name"] = col;
-            d["metadata"] = JSON.stringify({
-              "GWP": "IPCC AR6 100-year"
-            });
-            break;
           default:
         }
-        await db.putProduct(d); 
+        d["metadata"] = JSON.stringify(metadata);
+        try{
+          await db.putProduct(d); 
+        }catch(error){
+          opts.verbose && console.warn(error)
+        } 
         d["uuid"] = uuidv4();
         d["metadata"] = undefined;
         loader.incLoaded();
+      }
+      // Match operator to asset 
+      if(operator){
+        // find oil and gas assets that match operator name 
+        const names = CATF_COMPANY_NAME_SEARCH[row["Company"]];
+        const queries=[];
+        if(names){
+          for(const name of names){
+            queries.push({
+              field: 'operator',
+              fieldType: 'string',
+              value: name,
+              op: 'like'              
+            })
+            queries.push({
+              field: 'name',
+              fieldType: 'string',
+              value: name,
+              op: 'like'              
+            })
+          }
+        }else if (row["Company"].length>0){
+          queries.push({
+            field: 'operator',
+            fieldType: 'string',
+            value: row["Company"],
+            op: 'like'              
+          }) 
+          queries.push({
+            field: 'name',
+            fieldType: 'string',
+            value: row["Company"],
+            op: 'like'              
+          })         
+        } 
+        const assets:OilAndGasAssetInterface[] = 
+          await dbAsset.select(queries);
+        if(assets.length==0){
+          opts.verbose && console.log('No assets found for company : ', row["Company"])
+        } 
+        for (const asset of assets) {
+          const ao: AssetOperatorInterface = {
+            uuid: uuidv4(),
+            class: ASSET_OPERATOR_CLASS_IDENTIFIER,
+            assetUuid: asset.uuid,
+            operatorUuid: operator.uuid,
+            operator,
+            from_date: d['from_date']!,
+            share: 1
+          }
+          try{
+            await dbAssetOperator.putAssetOperator(ao);
+          }catch(error){
+            opts.verbose && console.warn(error)
+          }
+        }
       }
     }
     loader.done();
     return;
   }
 }
+
+const getOpertor = async(
+  opts: ParseWorksheetOpts,
+  db: OperatorDbInterface, 
+  name: string,
+  walletAddress: string,
+) :Promise<OperatorInterface | null> => {
+  let operator = await db.selectOne(
+    [{
+      field: 'name',
+      fieldType: 'string',
+      value: name?.split(" ")[0],
+      op: 'like'}]
+  );
+  if(!operator){
+    // create a new operator
+    operator = await createOperator(opts,db,name,walletAddress);
+  }
+  return operator
+}
+
+const createOperator = async(
+  opts: ParseWorksheetOpts,
+  db: OperatorDbInterface,
+  name: string,
+  walletAddress: string 
+):Promise<OperatorInterface> => {
+  let operator = await db.findByName(name);
+  if(!operator){
+    operator = {
+      uuid: uuidv4(),
+      class: OPERATOR_CLASS_IDENTIFIER,
+      name: name,
+      wallet_address: walletAddress,
+    }; 
+    try{
+      await db.putOperator(operator);
+    }catch(error){
+      opts.verbose && console.warn(error)
+    } 
+  }
+  return operator
+}
+
+
+export const updateProductDates = async (
+  opts: ParseWorksheetOpts,
+  progressBar: SingleBar,
+  dbProduct: ProductDbInterface
+) => {
+  const products = await dbProduct.getAllProducts();
+  const count = await dbProduct.count([]);
+  const loader = new LoadInfo('', '', progressBar, count);
+  for (const product of products) {
+    product['from_date'] = setFromDate(opts,loader,product)
+    product['thru_date'] = setThruDate(opts,loader,product)
+    try{
+      await dbProduct.putProduct(product);
+    }catch(error){
+      opts.verbose && console.warn(error)
+    }
+    loader.incLoaded();
+  }
+  loader.done();
+  return;
+}
+const setFromDate = (
+  opts: ParseWorksheetOpts,
+  loader: LoadInfo, 
+  product: ProductInterface
+):Date|undefined => {
+  let month = 0;
+  const year = Number(product.year);
+  if(!product.from_date){
+    if(!product.year){
+      loader.incIgnored(`No year available for product ${product.uuid}`);
+      return
+    }
+    if(product.month){
+      month = new Date([product.year,product.month].join()).getMonth()
+    }
+    return new Date(Date.UTC(year,month))
+  }
+}
+const setThruDate = (
+  opts: ParseWorksheetOpts,
+  loader: LoadInfo, 
+  product: ProductInterface
+):Date|undefined => {
+  let month = 0;
+  let year = Number(product.year);
+  if(!product.thru_date){
+    if(!product.year){
+      loader.incIgnored(`No year available for product ${product.uuid}`);
+      return;
+    }
+    
+    if(product.month){
+      const date = new Date([product.year,product.month].join())
+      //thru date is start of next month
+      month = date.getMonth()+1
+    }else{
+      //thru date is start of next year
+      year+=1;
+    }
+    return new Date(Date.UTC(year,month))
+  }
+}
+
+
+
