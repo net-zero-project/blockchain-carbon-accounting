@@ -23,6 +23,7 @@ const EVENTS_BLOCK_INTERVAL = Number(process.env['LEDGER_EVENTS_BLOCK_INTERVAL']
 export const startupSync = async(opts: OPTS_TYPE) => {
     // FIRST_BLOCK is the block number of the contract deployment as set in .env
     const fromBlock = "hardhat" === opts.network_name ? 0 : FIRST_BLOCK;
+    console.log('-> Starting synchronization from block ' + fromBlock);
     let syncFromBlock = fromBlock;
 
     // if we do not have a Sync entry or we are on Hardhat local network
@@ -30,15 +31,17 @@ export const startupSync = async(opts: OPTS_TYPE) => {
     if ("hardhat" !== opts.network_name) {
         // get the last synced block
         const lastSync = await getLastSync(opts);
-        if (lastSync) {
+        if (lastSync && lastSync != FIRST_BLOCK) {
             syncFromBlock = lastSync + 1;
         }
     } else {
         console.log('* Running on Hardhat local network. Clearing data and resyncing.');
     }
+    console.log('-> syncFromBlock ' + syncFromBlock);
 
     // so only clear if we want to start from fresh
     if (syncFromBlock == fromBlock) {
+        console.log('* Clearing data and resyncing.');
         try {
             await clearTokensDBData();
             await clearWalletsRolesDBData();
@@ -102,6 +105,8 @@ export const syncEvents = async (fromBlock: number, currentBlock: number, opts: 
         const db = await PostgresDBService.getInstance()
 
         const account_events = [
+            {event: 'RoleGranted'},
+            {event: 'RoleRevoked'},
             {event: 'RegisteredConsumer', role: 'Consumer'},
             {event: 'UnregisteredConsumer', role: 'Consumer'},
             {event: 'RegisteredDealer', role: 'Dealer'},
@@ -155,6 +160,30 @@ export const syncEvents = async (fromBlock: number, currentBlock: number, opts: 
     }
 }
 
+/** Read the event log of the CarbonTracker and process events.
+ * - For TrackerUpdated: check token id and amount changes on trackerId
+ * - For ProductsUpdated: check transfers and update the balances in the DB
+ */
+export const syncCarbonTrackerEvents = async (fromBlock: number, currentBlock: number, opts: OPTS_TYPE) => {
+    try {
+        const db = await PostgresDBService.getInstance()
+
+        const account_events = [
+            {event: 'RegisteredTracker'},
+            {event: 'TrackerUpdated'},
+            {event: 'ProductsUpdated'},
+        ];
+        const accountAddresses: Record<string, boolean> = {};
+        const syncedAccountAddresses: Record<string, boolean> = {};
+        let toBlock = fromBlock;
+        while (toBlock <= currentBlock) {
+        }
+    } catch (err) {
+        console.error(err)
+        throw new Error('Error in syncEvents: ' + err)
+    }
+}
+
 export const getRoles = async (address: string, opts: OPTS_TYPE) => {
   return await getContract(opts).methods.getRoles(address).call();
 }
@@ -198,7 +227,7 @@ export const syncWalletRoles = async (address: string, opts: OPTS_TYPE, data?: P
         }
 
         const w = await db.getWalletRepo().ensureWalletWithRoles(address, roles, data);
-        console.log('saved wallet',w)
+        console.log('saved wallet address: ', w.address)
     } catch (err) {
         console.error(err)
         throw new Error('Error in getNumOfUniqueTokens: ' + err)
@@ -233,7 +262,7 @@ const getNumOfProductTokens = async (opts: OPTS_TYPE): Promise<number> => {
     }
 }
 
-/** Get number of unique tokens on the blockchain. */
+/** Get number of unique trackers on the blockchain. */
 const getNumOfTrackers = async (opts: OPTS_TYPE): Promise<number> => {
     try {
         const result = await getTrackerContract(opts).methods._numOfUniqueTrackers().call();
@@ -259,7 +288,6 @@ async function getTokenDetails(tokenId: number, opts: OPTS_TYPE): Promise<TokenP
 async function getProductDetails(productId: number, opts: OPTS_TYPE): Promise<ProductTokenPayload> {
     try {
         const product: ProductTokenPayload = await getTrackerContract(opts).methods._productData(productId).call();
-        //getProductOptionalDetails
         product.productId = productId;
         return product;
     } catch (err) {
@@ -273,7 +301,11 @@ async function getTrackerDetails(trackerId: number, opts: OPTS_TYPE): Promise<Tr
     try {
         const result: any = await getTrackerContract(opts).methods.getTrackerDetails(trackerId).call();
         const tracker: TrackerPayload = Object.assign({}, result[0]);
-        console.log(result);
+        const metadata = JSON.parse(result[0].metadata)
+        tracker.metadata = metadata
+        if(metadata.operator_uuid!){
+            tracker.operatorUuid = metadata.operator_uuid
+        }
         tracker.totalEmissions = result[1];
         return tracker;
     } catch (err) {
@@ -339,7 +371,7 @@ export const clearTokensDBData = async () => {
     const db = await PostgresDBService.getInstance()
     await db.getTokenRepo().truncateTokens();
     // truncate balances is also done by truncate tokens
-    console.log('--- Tables has been cleared. ----\n')
+    console.log('--- Token tables have been cleared. ----\n')
 }
 
 /** Clear the wallet roles data. */
@@ -418,7 +450,7 @@ export const fillProductTokens = async (opts: OPTS_TYPE, sendEmail: boolean) => 
     return await getCurrentBlock(opts);
 }
 
-/** Sync the tokens from the blockchain and returns the blockchain current block number.
+/** Sync the trackers from the blockchain and returns the blockchain current block number.
 This does not depend on a starting block as we rely on the fact that token ids are sequential.
 */
 export const fillTrackers = async (opts: OPTS_TYPE, sendEmail: boolean) => {
@@ -439,7 +471,7 @@ export const fillTrackers = async (opts: OPTS_TYPE, sendEmail: boolean) => {
     console.log('num of trackers');
     // get the token details from the network
     if (numOfIssuedTrackers > numOfSavedTrackers) {
-        // note: this should only get NEW tokens as tokenId auto-increments, but double check anyway
+        // note: this should only get NEW trackers as tokenId auto-increments, but double check anyway
         for (let trackerId = numOfSavedTrackers + 1; trackerId <= numOfIssuedTrackers; trackerId++) {
             // if the token is not in the database, get the initial details and save it
             const t = await db.getTrackerRepo().selectTracker(trackerId);

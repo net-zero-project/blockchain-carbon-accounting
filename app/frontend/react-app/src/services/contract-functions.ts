@@ -5,10 +5,10 @@ import { BigNumber } from "@ethersproject/bignumber";
 import { Contract } from "@ethersproject/contracts";
 import { Wallet } from "@ethersproject/wallet"
 import { Web3Provider, JsonRpcProvider } from "@ethersproject/providers";
-import { RolesInfo, Tracker } from "../components/static-data";
+import { RolesInfo, Tracker, ProductToken } from "../components/static-data";
 
 
-const SUCCESS_MSG = "Success! Transaction has been submitted to the network. Please wait for confirmation on the blockchain.";
+export const SUCCESS_MSG = "Success! Transaction has been submitted to the network. Please wait for confirmation on the blockchain.";
 // was /(?<="message":")(.*?)(?=")/ but that does not work in Safari
 const EXTRACT_ERROR_MESSAGE = /"message":"(.*?)="/;
 
@@ -24,14 +24,31 @@ const PROPOSAL_STATES = [
   "Executed",
 ];
 
+const has = <K extends string>(
+  key: K,
+  x: object,
+): x is { [key in K]: unknown } => (
+  key in x
+);
+
 /*
  *  helper functions
  */
 export function getErrorMessage(error: unknown) {
-  if (error instanceof Error) return error.message
+  if (error instanceof Error) {
+    if (has('code', error) && has('reason', error) && error.code === "UNPREDICTABLE_GAS_LIMIT" && error.reason) {
+      return error.reason as string
+    }
+    return error.message
+  }
+  if (typeof error === 'object') {
+    if (error && has('message', error)) {
+      return error.message as string
+    }
+  }
   return String(error)
 }
-function catchError(error: unknown) {
+export function catchError(error: unknown) {
   const err = getErrorMessage(error);
   console.error(err);
 
@@ -60,13 +77,13 @@ function catchError(error: unknown) {
 }
 
 // Helper function to prevent ambiguous failure message when dates aren't passed
-function convertToZeroIfBlank(num: string | number) {
+export function convertToZeroIfBlank(num: string | number) {
   if (!num) return 0
   if (typeof num === 'string') return parseInt(num)
   return num
 }
 
-function toUnixTime(date: Date | number) {
+export function toUnixTime(date: Date | number) {
   // Return date if not a Date object
   if (Object.prototype.toString.call(date) !== "[object Date]") return date as number;
   return parseInt(((date as Date).getTime() / 1000).toFixed(0));
@@ -265,14 +282,23 @@ export async function issueAndTrack(
   metadata: string,
   manifest: string,
   description: string,
+  privateKey: string,
 ) {
-  let signer = w3provider.getSigner();
-  let contract = new Contract(addresses.tokenNetwork.address, abis.netEmissionsTokenNetwork.abi, w3provider);
-  let signed = contract.connect(signer);
+  
   let issue_result;
-  try {
-    await signed.issueAndTrack(
-      issuedFrom,
+  let contract;
+  if (w3provider instanceof Web3Provider) {
+    let signer = w3provider.getSigner();
+    contract = new Contract(addresses.tokenNetwork.address, abis.netEmissionsTokenNetwork.abi, w3provider);
+    contract = contract.connect(signer);
+  } else {
+    console.log("Json Provider - Track");
+    const signer  = new Wallet(privateKey, w3provider);
+    contract = new Contract(addresses.tokenNetwork.address, abis.netEmissionsTokenNetwork.abi, signer)
+  }
+  try{
+    await contract.issueAndTrack(
+      issuedFrom || 0,
       issuedTo,
       addresses.carbonTracker.address,
       trackerId,
@@ -287,7 +313,7 @@ export async function issueAndTrack(
     );
     //let tokenId = await signed.getNumOfUniqueTokens();
     issue_result = SUCCESS_MSG;
-  } catch (error) {
+  } catch(error){
     issue_result = catchError(error);
   }
   return issue_result;
@@ -770,58 +796,50 @@ export async function getTrackerDetails(
     let [trackerDetails, totalEmissions, productIds] = (await contract.getTrackerDetails(trackerId));
     totalEmissions = BigInt(totalEmissions);
     productIds = productIds.map(Number)
-    let totalProductAmounts = Number(trackerDetails.totalProductAmounts);
+    const totalProductAmounts = Number(trackerDetails.totalProductAmounts);
 
-    let owner = await contract.ownerOf(trackerId);
+    //const owner = await contract.ownerOf(trackerId);
 
-    let [tokenIds,tokenAmounts] = await contract.getTrackerTokenDetails(trackerId);
+    const [tokenIds,tokenAmounts] = await contract.getTrackerTokenDetails(trackerId);
 
     let decimals = (await contract.decimalsEf()).toNumber();
-    let emissionFactor = await contract.emissionFactor(trackerId) / decimals;
+    let emissionsFactor = await contract.emissionsFactor(trackerId) / decimals;
 
-    let myTokenAmounts = [].map(BigInt);
-    let emissionFactors = [];
-    let myProductsTotalEmissions = BigInt(0);
-
-    let myProductBalances =[].map(Number);
-    let productAmounts=[].map(Number),available=[],productNames=[],conversions=[],units=[];
-
-    let result;
+    let myTokenAmounts:number[] = [];
+    let myProductsTotalEmissions = 0;
+    
+    let products:ProductToken[]=[];
     for (let i = 0; i < productIds.length; i++) {
-      const productDetails = await contract.getProductDetails(productIds[i]);
-      result = productDetails;
+      let productId = productIds[i]
 
-      productAmounts.push(Number(result[1]));
-      available.push(Number(result[2]));
-
-      result = await contract.getProductOptionalDetails(productIds[i]);
+      const productData = await contract._productData(productId);
+      const conversion = Number(productData[2])/Number(productData[6]);
+      let product:ProductToken = {
+        productId,
+        trackerId,
+        auditor: productData[1],
+        amount: productData[2],
+        available: productData[3],
+        name: productData[4],
+        unit: productData[5].toString(),
+        unitAmount: productData[6].toString(),
+        conversion: conversion,
+        myBalance: Number(await contract.getProductBalance(productId,address)),
+        emissionsFactor: emissionsFactor/conversion
+      };
       
-      productNames.push(result[0].toString());
-      //conversions.push(result[1].toNumber()/decimals);
-      units.push(result[2].toString());
-
-      result = await contract._productData(productIds[i]);
-      conversions.push(result[2].toNumber()/result[6].toNumber())
-
-      myProductBalances[i] = Number(await contract.getProductBalance(productIds[i],trackerId,address));
-
       myTokenAmounts = tokenAmounts.map((e:number) => (
-        (e*myProductBalances[i]/totalProductAmounts)));
+        (e*product.myBalance!/totalProductAmounts)));
 
-      myProductsTotalEmissions += BigInt(Math.floor(myProductBalances[i]*emissionFactor)) ;
+      myProductsTotalEmissions += product.myBalance!*emissionsFactor ;
 
+      product.unitAmount = Number(product.amount)*conversion;
+      product.myBalance = product.myBalance!*conversion!;
+      product.unitAvailable =  Number(product.available)*conversion;
 
-      productAmounts[i] = (productAmounts[i] * conversions[i]);
-      myProductBalances[i] = (myProductBalances[i] * conversions[i]);
-      available[i] = (available[i] * conversions[i]);
-
-      emissionFactors[i] = (emissionFactor / conversions[i]);
+      products.push(product)
     }
-    if(myProductsTotalEmissions>0 && owner.toString().toLowerCase()!==address.toLowerCase()){
-      totalEmissions = myProductsTotalEmissions;
-      tokenAmounts = myTokenAmounts;
-      available = myProductBalances;
-    }
+
     let tokenDetails = [];
     for (let i = 0; i < tokenIds.length; i++) {
       tokenDetails[i]= await getTokenDetails(w3provider,tokenIds[i]);
@@ -831,26 +849,23 @@ export async function getTrackerDetails(
       trackerId,
       auditor: trackerDetails.auditor,
       trackee: trackerDetails.trackee,
+      dateCreated: Number(trackerDetails.dateCreated),
+      dateUpdated: Number(trackerDetails.dateUpdated),
+      totalProductAmounts: trackerDetails.totalProductAmounts,
       fromDate: Number(trackerDetails.fromDate),
       thruDate: Number(trackerDetails.thruDate),
+      createdBy: trackerDetails.createdBy,
       metadata: trackerDetails.metadata,
       description: trackerDetails.description,
       totalEmissions,
       //: Number(remainingEmissions.toFixed(0)),
       myProductsTotalEmissions: myProductsTotalEmissions,
       //totalOffset: totalOffset,
-      products: {
-        ids: productIds,
-        myBalances: myProductBalances.map(BigInt),
-        names: productNames,
-        amounts: productAmounts,
-        available,
-        emissionFactors: emissionFactors,
-        units,
-        conversions
-      },
+      products: products,
       tokens: {
+        ...tokenDetails,
         amounts: tokenAmounts,
+        myAmounts: myTokenAmounts,
         details: tokenDetails
       },
     };
@@ -874,7 +889,7 @@ export async function getEmissionFactor(w3provider: Web3Provider | JsonRpcProvid
   let contract = new Contract(addresses.carbonTracker.address, abis.carbonTracker.abi, w3provider);
   let ef;
   try {
-    ef = await contract.emissionFactor(trackerId,tokenTypeId);
+    ef = await contract.emissionsFactor(trackerId,tokenTypeId);
   } catch (error) {
     ef = getErrorMessage(error)
   }

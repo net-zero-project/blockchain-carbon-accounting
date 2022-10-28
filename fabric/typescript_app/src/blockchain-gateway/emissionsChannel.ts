@@ -13,8 +13,7 @@ import {
     IEmissionsDataUpdateEmissionsMintedTokenInput,
     IFabricTxCaller,
 } from '../blockchain-gateway-lib/I-gateway';
-import { Signer } from '../blockchain-gateway-lib/signer';
-
+import Signer from '../blockchain-gateway-lib/signer';
 interface IEmissionsDataGatewayOptions {
     fabricConnector: PluginLedgerConnectorFabric;
     signer: Signer;
@@ -42,12 +41,15 @@ export default class EmissionsDataGateway implements IEmissionsDataGateway {
                 invocationType: FabricContractInvocationType.Send,
                 methodName: 'recordEmissions',
                 params: [
-                    input.utilityId,
+                    input.endpoint,
+                    input.query,
+                    JSON.stringify(input.queryParams),
+                    //input.utilityId,
                     input.partyId,
                     input.fromDate,
                     input.thruDate,
-                    `${input.energyUseAmount}`,
-                    input.energyUseUom,
+                    //`${input.energyUseAmount}`,
+                    //input.energyUseUom,
                     input.url,
                     input.md5,
                 ],

@@ -1,11 +1,11 @@
 import chai from 'chai';
 import { config } from 'dotenv';
 import { v4 as uuid4 } from 'uuid';
-import { BCGatewayConfig } from '../../src/blockchain-gateway-lib/config';
+import BCGatewayConfig from '../../src/blockchain-gateway-lib/config';
 import { DataLockGateway } from '../../src/blockchain-gateway/datalock';
 import EmissionsDataGateway from '../../src/blockchain-gateway/emissionsChannel';
 import { IFabricTxCaller, TxState } from '../../src/blockchain-gateway-lib/I-gateway';
-import { Signer } from '../../src/blockchain-gateway-lib/signer';
+import Signer from '../../src/blockchain-gateway-lib/signer';
 import { setup } from '../../src/utils/logger';
 /* eslint-disable-next-line @typescript-eslint/no-unused-vars */
 const should = chai.should();
@@ -43,12 +43,20 @@ describe('DataLockGateway', () => {
                 fabricConnector: org.connector,
                 signer: signer,
             }).recordEmissions(adminCaller, {
-                utilityId: mockUtilityID2,
+                endpoint: 'http://oracle:3002/emissionsRecord',
+                query: 'getEmissionsByUtilityLookUpItem',
+                queryParams: {
+                    uuid: mockUtilityID2,
+                    usage: 100,
+                    usageUOM: 'kWh',
+                    thruDate: '2021-05-07T10:10:09Z',
+                },
+                //utilityId: mockUtilityID2,
                 partyId: uuid4(),
                 fromDate: '2020-05-07T10:10:09Z',
                 thruDate: '2021-05-07T10:10:09Z',
-                energyUseAmount: 100,
-                energyUseUom: 'kWh',
+                //energyUseAmount: 100,
+                //energyUseUom: 'kWh',
                 url: '',
                 md5: '',
             });

@@ -3,7 +3,7 @@
   "author": "Betrand Rioux <bertrand.rioux@gmail.com>",
   "version": "1.0.2",
   "description": "A client for connecting to the web-socket identity server",
-  "main": "./dist/index",
+  "main": "./dist/index.js",
   "module": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "scripts": {
@@ -41,7 +41,7 @@
     "eslint-config-prettier": "8.5.0",
     "eslint-config-standard": "^17.0.0",
     "eslint-plugin-import": "^2.26.0",
-    "jsrsasign": "10.5.20",
+    "jsrsasign": "10.5.25",
     "mocha": "^10.0.0",
     "prettier": "^2.6.2",
     "ts-node": "^10.8.0",
