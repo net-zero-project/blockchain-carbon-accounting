@@ -15,6 +15,6 @@
         "sourceMap": true
     },
     "include": ["*.ts","package.json"],
-    "exclude": ["dist/**/*"]
+    "exclude": ["dist/**/*","dist/**/*.ts"]
 }
 

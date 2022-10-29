@@ -49,7 +49,9 @@ export const OPTS: OPTS_TYPE = { contract_address, tracker_address, network_name
 const db = PostgresDBService.getInstance()
 
 const app: Application = express();
-const PORT: number | string = process.env.API_SERVER_PORT || 8000;
+//const PORT: number | string = process.env.API_SERVER_PORT || 8000;
+// use heroku assigned PORT
+const PORT: number | string = process.env.PORT || 8000;
 const CORS: string[] = (process.env.API_SERVER_CORS || 'http://localhost:3000').split(',');
 const corsOptions = {
     origin: CORS

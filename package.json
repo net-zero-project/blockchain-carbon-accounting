@@ -34,7 +34,6 @@
       "lib/*",
       "data",
       "app/api-server",
-      "app/api-oracle",
       "app/frontend/*",
       "app/supply-chain",
       "app/supply-chain/api"
