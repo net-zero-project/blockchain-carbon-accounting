@@ -20,7 +20,9 @@ config({ path: findConfig(".env") || '.' });
 const db = PostgresDBService.getInstance()
 
 const app: Application = express();
-const PORT: number | string = process.env.METHANE_SERVER_PORT || 8007;
+//const PORT: number | string = process.env.METHANE_SERVER_PORT || 8007;
+// use heroku asigned port
+const PORT: number | string = process.env.PORT || 8007;
 const CORS: string[] = (process.env.METHANE_SERVER_CORS || 'http://localhost:3007').split(',');
 const corsOptions = {
     origin: CORS
