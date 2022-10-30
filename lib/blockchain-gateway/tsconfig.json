@@ -14,7 +14,7 @@
         "skipLibCheck": true,
         "sourceMap": true
     },
-    "input": ["index.ts","src","src/**/*.json"],
+    "include": ["index.ts","src","src/**/*.json"],
     "exclude": ["dist/**/*"]
 }
 
