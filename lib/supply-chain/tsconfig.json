@@ -14,7 +14,7 @@
         "skipLibCheck": true,
         "sourceMap": true
     },
-    "include": ["src","*.ts","package.json"],
+    "input": ["src","*.ts","package.json"],
     "exclude": ["dist/**/*"],
     "references": [
         {"path": "../blockchain-gateway"},
