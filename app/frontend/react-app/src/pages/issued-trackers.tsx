@@ -192,7 +192,7 @@ const IssuedTrackers: ForwardRefRenderFunction<IssuedTrackersHandle, IssuedTrack
         
 
         if(typeof tracker === "object"){
-          const metadata = tracker.metadata.length>0 ? JSON.parse(tracker.metadata) : {};
+          const metadata = tracker?.metadata as any;
           if([null,undefined,'0','0x0000000000000000000000000000000000000000'].includes(displayAddress)
             || (tracker.trackee.toLowerCase()===displayAddress.toLowerCase()
             && (metadata?.operator_uuid === operatorUuid || !metadata?.operator_uuid))
@@ -325,7 +325,7 @@ const IssuedTrackers: ForwardRefRenderFunction<IssuedTrackersHandle, IssuedTrack
               <td>{tracker.trackerId===selectedTracker?.trackerId! && <FcCheckmark/>}{tracker.trackerId}</td>
               <td>{showTrackers === 'my_products' ? tracker?.myProductsTotalEmissions!.toLocaleString('en-US') : tracker.totalEmissions.toLocaleString('en-US')}
                 {(isDealer && tracker.auditor === "0x0000000000000000000000000000000000000000") && '\n' && <>
-                  <p><b style={{backgroundColor: `${rowShading(tracker?.products![1]?.emissionsFactor!)}`, textShadowRadius: 10, textShadowOffset: {width: -1, height: 1}}}>{tracker.products[0].emissionsFactor!.toFixed(1)}{" kgCO2e/"+tracker.products[0].unit}</b></p>
+                  <p><b style={{backgroundColor: `${rowShading(tracker?.products![1]?.emissionsFactor!)}`}}>{tracker?.products![0]?.emissionsFactor?.toFixed(1)}{" kgCO2e/"+tracker?.products![0]?.unit!}</b></p>
                   <p><Button className="mb-3" variant="outline-dark" href={"/track/"+tracker.trackerId}> Add emissions</Button></p>
                   </>
                 }
