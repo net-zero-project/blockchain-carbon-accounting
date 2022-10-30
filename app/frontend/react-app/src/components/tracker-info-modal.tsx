@@ -153,13 +153,13 @@ const TrackerInfoModal:FC<TrackerInfoModalProps> = ({provider,show,tracker,onHid
                 </td>
                 <td>
                   <div key={product.name+"Amount"+i}>
-                    {Math.round(product.unitAmount!).toLocaleString('en-US') + " " + product.unit}
+                    {Math.round(product?.unitAmount!).toLocaleString('en-US') + " " + product.unit}
                   </div>
                 </td>
                 <td>{Math.round(product.unitAvailable!).toLocaleString('en-US')}</td>
-                <td>{product.myBalance.toLocaleString('en-US')}</td>
+                <td>{product?.myBalance?.toLocaleString('en-US')}</td>
                 <td>
-                  <div key={product.name+"Intensity"+i}>{Math.round(product.emissionsFactor!).toLocaleString('en-US')}{" kgCO2e/"+product.unit}</div>
+                  <div key={product?.name+"Intensity"+i}>{Math.round(product?.emissionsFactor!).toLocaleString('en-US')}{" kgCO2e/"+product?.unit}</div>
                 </td>
               </tr>
             ))
