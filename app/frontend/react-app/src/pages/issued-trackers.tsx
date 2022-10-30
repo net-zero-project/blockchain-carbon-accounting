@@ -148,7 +148,7 @@ const IssuedTrackers: ForwardRefRenderFunction<IssuedTrackersHandle, IssuedTrack
   const fetchTrackers = useCallback(async (_page: number, _pageSize: number, _query: string[]) => {
 
     let newMyTrackers:Tracker[] =[];
-    let newRefTracker;
+    let newRefTracker:Tracker | undefined;
     let newIssuedTrackers:Tracker[] = [];
     let newTrackersICreated:Tracker[] = [];
     let newUnIssuedTrackers:Tracker[] = [];
@@ -189,7 +189,10 @@ const IssuedTrackers: ForwardRefRenderFunction<IssuedTrackersHandle, IssuedTrack
         const tracker:Tracker | string
           = await getTrackerDetails(provider, i, signedInAddress);
         //console.log('--- trackerDetails', tracker, displayAddress);
-        
+        if ((tracker as Tracker)?.trackerId===3){
+          newRefTracker = tracker as Tracker;
+          //console.log("ref tracker", newRefTracker)
+        }        
 
         if(typeof tracker === "object"){
           const metadata = tracker?.metadata as any;
@@ -197,9 +200,6 @@ const IssuedTrackers: ForwardRefRenderFunction<IssuedTrackersHandle, IssuedTrack
             || (tracker.trackee.toLowerCase()===displayAddress.toLowerCase()
             && (metadata?.operator_uuid === operatorUuid || !metadata?.operator_uuid))
           ){
-            if (tracker.trackerId===4){
-              newRefTracker = tracker;
-            }
             if (tracker?.trackee?.toLowerCase() === signedInAddress.toLowerCase()) {
               newMyTrackers.push({...tracker});
             }else if (tracker?.createdBy?.toLowerCase() === signedInAddress.toLowerCase()) {
@@ -311,7 +311,7 @@ const IssuedTrackers: ForwardRefRenderFunction<IssuedTrackersHandle, IssuedTrack
       <thead>
         <tr>
           <th>ID</th>
-          <th>{(showTrackers==='my_products' ? "My Emissions":"Total Emissions")+' kg CO2e'}</th>
+          <th>{(showTrackers==='my_products' ? "My Emissions":"Emissions")+', tons CO2e'}</th>
           <th>Products</th>
           <th>Description</th>
           <th></th>
@@ -323,7 +323,7 @@ const IssuedTrackers: ForwardRefRenderFunction<IssuedTrackersHandle, IssuedTrack
             <tr key={tracker.trackerId+showTrackers} style={{ borderTopWidth: '5px', borderColor: rowShading(tracker?.products![1]?.emissionsFactor!)}} onClick={() => handleOpenTrackerInfoModal(tracker)} onMouseOver={pointerHover}>
               
               <td>{tracker.trackerId===selectedTracker?.trackerId! && <FcCheckmark/>}{tracker.trackerId}</td>
-              <td>{showTrackers === 'my_products' ? tracker?.myProductsTotalEmissions!.toLocaleString('en-US') : tracker.totalEmissions.toLocaleString('en-US')}
+              <td>{showTrackers === 'my_products' ? (Number(tracker?.myProductsTotalEmissions!)/1000.0).toLocaleString('en-US') : (Number(tracker?.totalEmissions!)/1000.0).toLocaleString('en-US')}
                 {(isDealer && tracker.auditor === "0x0000000000000000000000000000000000000000") && '\n' && <>
                   <p><b style={{backgroundColor: `${rowShading(tracker?.products![1]?.emissionsFactor!)}`}}>{tracker?.products![0]?.emissionsFactor?.toFixed(1)}{" kgCO2e/"+tracker?.products![0]?.unit!}</b></p>
                   <p><Button className="mb-3" variant="outline-dark" href={"/track/"+tracker.trackerId}> Add emissions</Button></p>
