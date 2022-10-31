@@ -160,16 +160,16 @@ const IssuedTrackers: ForwardRefRenderFunction<IssuedTrackersHandle, IssuedTrack
           newQuery = _query.concat([`auditor,string,0x0000000000000000000000000000000000000000,eq,true`])
           break
         case 'requested':
-          newQuery = _query.concat([`createdBy,string,${signedInAddress},eq,true`])
+          newQuery = _query.concat([`createdBy,string,${signedInAddress},like,true`])
           break
         case 'audited':
-          newQuery = _query.concat([`auditor,string,${signedInAddress},eq,true`])
+          newQuery = _query.concat([`auditor,string,${signedInAddress},like,true`])
           break
         case 'my':
-          newQuery = _query.concat([`trackee,string,${signedInAddress},eq,true`])
+          newQuery = _query.concat([`trackee,string,${signedInAddress},like,true`])
           break
         case 'my':
-          newQuery = _query.concat([`trackee,string,${signedInAddress},eq,true`])
+          newQuery = _query.concat([`trackee,string,${signedInAddress},like,true`])
           break
         //default:
       }
