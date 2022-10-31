@@ -76,6 +76,7 @@ export interface TrackerPayload {
 
 
 const OP_MAP: Record<string, string> = {
+    'neq': '!=',
     'eq': '=',
     'like': 'like',
     'ls': '<',
@@ -120,6 +121,7 @@ export function buildQueries(
       // process 'like' exception for payload
       if(query.op == 'like') payload[query_field_label] = '%' + query.value as string + '%'
       else if(query.op == '=') payload[query_field_label] = query.value as string
+      else if(query.op == '!=') payload[query_field_label] = query.value as string
       else if(query.op == 'vector') payload[query_field_label] = query.value as string
 
     }
