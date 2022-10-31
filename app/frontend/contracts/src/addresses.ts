@@ -149,6 +149,6 @@ const networksAndAddresses = {
 }
 
 // change this to the network you want
-const addresses = networksAndAddresses.hardhat;
+const addresses = networksAndAddresses.goerli;
 
 export default addresses;

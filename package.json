@@ -34,7 +34,7 @@
       "lib/*",
       "data",
       "app/api-server",
-      "app/frontend/*",
+      "app/frontend/contracts",
       "app/supply-chain",
       "app/supply-chain/api"
     ]
