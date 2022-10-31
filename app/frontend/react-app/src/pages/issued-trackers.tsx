@@ -4,6 +4,7 @@ import {
   useEffect, useImperativeHandle, useState, MouseEvent, 
   ChangeEvent 
 } from "react";
+import Spinner from "react-bootstrap/Spinner";
 import Button from 'react-bootstrap/Button';
 import Table from "react-bootstrap/Table";
 
@@ -16,13 +17,15 @@ import DropdownButton from 'react-bootstrap/DropdownButton';
 
 import { Web3Provider, JsonRpcProvider } from "@ethersproject/providers";
 
-import { getNumOfUniqueTrackers, getTrackerDetails, verifyTracker } from "../services/contract-functions";
+import { verifyTracker } from "../services/contract-functions";
+//getNumOfUniqueTrackers, getTrackerDetails, 
+
 import { getTrackers,getTracker } from '../services/api.service';
-import { trpc } from "../services/trpc";
+//import { trpc } from "../services/trpc";
 
 import TrackerInfoModal from "../components/tracker-info-modal";
 import Paginator from "../components/paginate";
-import { RolesInfo, Tracker, Wallet, ProductToken } from "../components/static-data";
+import { RolesInfo, Tracker, ProductToken } from "../components/static-data";
 
 type SelectTrackers = 'my' | 'my_products' | 'issued' | 'unissued' | 'requested' | 'audited'
 
@@ -44,7 +47,6 @@ type IssuedTrackersHandle = {
 const IssuedTrackers: ForwardRefRenderFunction<IssuedTrackersHandle, IssuedTrackersProps> = ({ provider, signedInAddress, roles, displayAddress, handleTrackerSelect, operatorUuid, _showTrackers='issued'}, ref) => {
   const isDealer = roles.hasDealerRole;
   //const isIndustry = roles.hasIndustryRole;
-
   // Modal display and token it is set to
   const [modalTrackerShow, setModalTrackerShow] = useState(false);
   const [selectedTracker, setSelectedTracker] = useState<Tracker|null>();
@@ -52,7 +54,7 @@ const IssuedTrackers: ForwardRefRenderFunction<IssuedTrackersHandle, IssuedTrack
   // Balances of my tokens and tokens I've issued
 
   const [refTracker, setRefTracker] = useState<Tracker>();
-  const [selectedTrackers, setSelecterTrackers] = useState<Tracker[]>([]);
+  const [selectedTrackers, setSelectedTrackers] = useState<Tracker[]>([]);
 
   type TrackerSelectors = {key: SelectTrackers; value: string}
   // show and select show trakers
@@ -60,14 +62,13 @@ const IssuedTrackers: ForwardRefRenderFunction<IssuedTrackersHandle, IssuedTrack
     {key: 'issued', value: "issued"},
     {key: 'unissued', value: "requested"},
     {key: 'requested', value: "I requested"},
-    
   ]
   if(roles.isAeDealer){trackerSelectors.push({key: 'audited', value: "I issued"})} 
-  if(displayAddress===signedInAddress){
-    trackerSelectors.concat([
+  if(signedInAddress){
+    trackerSelectors.push(
       {key: 'my', value: 'issued to me'},
       //{key: 'my_products',  value: 'for my products'}
-    ])
+    )
   } 
 
   localStorage.setItem('issueTo', displayAddress!)
@@ -85,9 +86,8 @@ const IssuedTrackers: ForwardRefRenderFunction<IssuedTrackersHandle, IssuedTrack
   const [ page, setPage ] = useState(1);
   const [ pagesCount, setPagesCount ] = useState(0);
   const [ pageSize, setPageSize ] = useState(20);
-  const [ query, setQuery ] = useState<string[]>(operatorUuid ? [`operatorUuid,string,${operatorUuid},eq,true`] : []);
-  //const query:string[] = [`operatorUuid,string,${operatorUuid},eq,true`]
-  const [ userWallet, setUserWallet ] = useState<(Wallet)>();
+  const [ query, ] = useState<string[]>(operatorUuid ? [`operatorUuid,string,${operatorUuid},eq,true`] : []);
+  //const [ userWallet, setUserWallet ] = useState<(Wallet)>();
 
   async function handlePageChange(_: ChangeEvent<HTMLInputElement>, value: number) {
     await fetchTrackers(value, pageSize, query);
@@ -98,14 +98,14 @@ const IssuedTrackers: ForwardRefRenderFunction<IssuedTrackersHandle, IssuedTrack
   }
 
   function handleOpenTrackerInfoModal(tracker: Tracker) {
-    if(tracker === selectedTracker){
-      setSelectedTracker(null)
-      handleTrackerSelect! && handleTrackerSelect(null);
-    }
-    else{
-      setSelectedTracker(tracker)
-      handleTrackerSelect! && handleTrackerSelect(tracker);
-    };
+      if(tracker === selectedTracker){
+        setSelectedTracker(null)
+        if(handleTrackerSelect) handleTrackerSelect! && handleTrackerSelect(null);
+      }
+      else{
+        setSelectedTracker(tracker)
+        if(handleTrackerSelect) handleTrackerSelect! && handleTrackerSelect(tracker);
+      };
     setModalTrackerShow(true);
   }
 
@@ -126,17 +126,17 @@ const IssuedTrackers: ForwardRefRenderFunction<IssuedTrackersHandle, IssuedTrack
     await fetchTrackers(page, pageSize, query);
   }
 
-  trpc.useQuery(['wallet.lookup', {query: signedInAddress}], {
+  /*trpc.useQuery(['wallet.lookup', {query: signedInAddress}], {
     onSettled: (output) => {
       console.log('lookup query settled with', output?.wallets)
       if (output?.wallets) {
         setUserWallet([...output?.wallets][0])
       }
     }
-  })
+  })*/
 
   const fetchTrackers = useCallback(async (_page: number, _pageSize: number, _query: string[]) => {
-
+    setFetchingTrackers(true);
     const { tracker } = await getTracker(3);
     setRefTracker(tracker);
 
@@ -151,7 +151,7 @@ const IssuedTrackers: ForwardRefRenderFunction<IssuedTrackersHandle, IssuedTrack
        */
       
       let newQuery:string[] = [];
-      console.log(showTrackers)
+      //console.log(showTrackers)
       switch(showTrackers){
         case 'issued':
           newQuery = _query.concat([`auditor,string,0x0000000000000000000000000000000000000000,neq,true`])
@@ -168,7 +168,7 @@ const IssuedTrackers: ForwardRefRenderFunction<IssuedTrackersHandle, IssuedTrack
         case 'my':
           newQuery = _query.concat([`trackee,string,${signedInAddress},like,true`])
           break
-        case 'my':
+        case 'my_products':
           newQuery = _query.concat([`trackee,string,${signedInAddress},like,true`])
           break
         //default:
@@ -232,13 +232,13 @@ const IssuedTrackers: ForwardRefRenderFunction<IssuedTrackersHandle, IssuedTrack
     }
 
     setFetchingTrackers(false);
-    setSelecterTrackers(newSelectedTrackers)
+    setSelectedTrackers(newSelectedTrackers)
     setError("");
     setPagesCount(_pagesCount);
     setPage(_page);
     setPageSize(_pageSize);
     //setQuery(_query);
-  }, [ query,showTrackers, signedInAddress, operatorUuid]);
+  }, [ showTrackers, signedInAddress ]);
 
 
   const handleTrackersSelect = async (index:string) => {
@@ -251,6 +251,7 @@ const IssuedTrackers: ForwardRefRenderFunction<IssuedTrackersHandle, IssuedTrack
   // If address and provider detected then fetch balances
   useEffect(() => {
     const init = async () => {
+
       await fetchTrackers(1, 20, query);
     }
     if (signedInAddress) {
@@ -259,41 +260,40 @@ const IssuedTrackers: ForwardRefRenderFunction<IssuedTrackersHandle, IssuedTrack
       // pending for signedInAddress. display the spinner ...
       setFetchingTrackers(true);
     }
-  }, [signedInAddress, fetchTrackers]);
+  }, [signedInAddress, fetchTrackers, query, setFetchingTrackers]);
 
   function pointerHover(e: MouseEvent<HTMLElement>) {
     e.currentTarget.style.cursor = "pointer";
   }
 
-  function displayProduct(tracker: Tracker, product: ProductToken){
-    const amount = (showTrackers==='my' ? product.myBalance : product.unitAmount
-    )
+  function displayProduct(tracker: Tracker, product: ProductToken,signedInAddress: string){
+    //const amount = (showTrackers==='my' ? product.myBalance : product.unitAmount)
+    const amount = product.unitAmount
     if(amount!>0){
       const name = product.name.toLowerCase();
       const unit = product.unit;
       return(
       <Row key={tracker.trackerId+"ProductInfo"+product.productId}>
-        <Row key={tracker.trackerId+name+product.productId+"Amount"}>
-            <span>{name === 'oil'&& <GiOilDrum/>}{name === 'gas'&& <IoIosFlame/>}{`${Math.round(product.unitAmount!).toLocaleString('en-US')} ${unit}`}</span>
+        <span key={tracker.trackerId+name+product.productId+"Amount"}>
+          <span>{name === 'oil'&& <GiOilDrum/>}{name === 'gas'&& <IoIosFlame/>}{`${Math.round(product.unitAmount!).toLocaleString('en-US')} ${unit}`}</span>
           <span>{product.myBalance!>0 && product.myBalance !== product.unitAmount && (
             "My balance = "+Math.round(product.myBalance!).toLocaleString('en-US')+" "+unit
-          )}</span>
-        </Row>
-        {/*<Row key={tracker.trackerId+name+product.productId+"intensity"}>
-            <>{product.emissionsFactor!.toFixed(1)}
-              {" kgCO2e/"+unit}</>
-        </Row>*/}
+          )}</span>&nbsp;
 
-        <Row sm={12} xs={12}>
+          { ((signedInAddress.toLowerCase()===tracker.trackee.toLowerCase() && Number(product.available)>0) || product?.myBalance! > 0) && tracker?.auditor.toLowerCase()!=="0x0000000000000000000000000000000000000000"
+            && <Button variant="outline-dark" href={"/transferProduct/"+tracker.trackerId+"/"+product.productId} >Transfer</Button>
+          }
+          {/*<Row key={tracker.trackerId+name+product.productId+"intensity"}>
+              <>{product.emissionsFactor!.toFixed(1)}
+                {" kgCO2e/"+unit}</>
+          </Row>*/}
+
           {
             /* TO-DO the following conditional should be set to owner of the C-NFT
              since it can be transferred from the trackee to a distributor
              using the ERC721Upgradeable transfer function*/
           }
-          { ((signedInAddress.toLowerCase()===tracker.trackee.toLowerCase() && product.available>0) || product?.myBalance!>0) && tracker?.auditor.toLowerCase()!=="0x0000000000000000000000000000000000000000"
-            && <Button className="mb-3" variant="outline-dark" href={"/transferProduct/"+tracker.trackerId+"/"+product.productId} >Transfer</Button>
-          }
-        </Row>
+        </span>
       </Row>)
     }
   }
@@ -345,13 +345,16 @@ const IssuedTrackers: ForwardRefRenderFunction<IssuedTrackersHandle, IssuedTrack
                 }
               </td>
               <td>{tracker?.products?.map((product) => (
-                  displayProduct(tracker,product)
+                  displayProduct(tracker,product,signedInAddress)
               ))}
               {(isDealer && tracker.auditor.toLowerCase()==="0x0000000000000000000000000000000000000000") &&
                 <Button className="mb-3" variant="outline-dark" href={"/addProduct/"+tracker.trackerId}>Add product</Button>
               }</td>
               <td>
-                <span key={"trackerId"+tracker.trackerId+"Description"}>{tracker.description}</span>
+                { signedInAddress.toLowerCase()===tracker.trackee.toLowerCase() && tracker?.auditor.toLowerCase()!=="0x0000000000000000000000000000000000000000"
+                  && <Button disabled={true} variant="outline-dark" href={"/transferTracker/"+tracker.trackerId} >Transfer Certificate</Button>
+                }
+                &nbsp;<span key={"trackerId"+tracker.trackerId+"Description"}>{tracker.description}</span>
               </td>
               <td>{provider && roles.isAeDealer && <Button className="mb-3" variant="outline-dark" onClick={async() => await verifyTracker(provider, tracker.trackerId)}>Verify</Button>}</td>
             </tr>)
@@ -361,7 +364,14 @@ const IssuedTrackers: ForwardRefRenderFunction<IssuedTrackersHandle, IssuedTrack
   }
 
   return (
-    <>
+    <div className={fetchingTrackers ? "dimmed" : ""}>
+      {fetchingTrackers && (
+        <div className="text-center my-4">
+          <Spinner animation="border" role="status">
+            <span className="visually-hidden">Loading...</span>
+          </Spinner>
+        </div>
+      )}
       {selectedTracker! && <TrackerInfoModal
         show={modalTrackerShow}
         tracker={selectedTracker}
@@ -394,7 +404,7 @@ const IssuedTrackers: ForwardRefRenderFunction<IssuedTrackersHandle, IssuedTrack
           pageSizeHandler={handlePageSizeChange}
         />}
       </div>
-    </>
+    </div>
   );
 }
 

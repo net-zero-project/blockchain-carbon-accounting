@@ -8,7 +8,6 @@ import "react-datetime/css/react-datetime.css";
 import { productUpdate } from "../services/contract-functions";
 import SubmissionModal from "../components/submission-modal";
 import { Web3Provider, JsonRpcProvider } from "@ethersproject/providers";
-import { trpcClient } from "../services/trpc";
 import { RolesInfo } from "../components/static-data";
 
 type ProductFormProps = {
