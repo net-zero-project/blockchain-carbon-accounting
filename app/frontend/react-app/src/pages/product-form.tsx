@@ -55,22 +55,8 @@ const ProductForm: FC<ProductFormProps> = ({ provider, roles, limitedMode, track
     let result = await productUpdate(
       provider,trackerId,productAmount_formatted,
       productName, productUnit, BigInt(Math.floor(productUnitAmount_formatted)));
-      let address = await provider.getSigner().getAddress();
-      console.log(result)
-    try {
-      await trpcClient.mutation('producToken.insert', {
-        productId: 0,
-        trackerId: trackerId,
-        auditor: address,
-        amount: productAmount_formatted,
-        available: productAmount_formatted,
-        name: productName,
-        unit: productUnit,
-        unitAmount: productUnitAmount_formatted,
-      })
-    } catch (error) {
-      console.error('trpc error;', error)
-    }
+    //console.log(result)
+
 
     setResult(result[0].toString());
   }
