@@ -21,6 +21,7 @@ export interface StringPayload {
 
 export interface TokenPayload {
   tokenId: number;
+  trackerId?: number;
   tokenTypeId: number;
   issuedBy: string;
   issuedFrom: string;
@@ -41,6 +42,18 @@ export interface TokenPayload {
 
 export type EmissionsRequestPayload = Omit<EmissionsRequest, 'uuid' | 'created_at' | 'updated_at' | 'toJSON'>
 
+export interface ProductTokenPayload {
+  productId: number;
+  trackerId: number|undefined;
+  auditor: string;
+  amount: bigint;
+  available: bigint;
+  name: string;
+  unit: string;
+  unitAmount: number;
+  emissionsFactor: number;
+}
+
 export interface TrackerPayload {
   trackerId: number;
   trackee: string;
@@ -48,7 +61,7 @@ export interface TrackerPayload {
   auditor: string;
   totalProductAmounts: bigint;
   totalEmissions: bigint;
-  totalOffset: bigint;
+  totalOffsets: bigint;
   fromDate: number;
   thruDate: number;
   dateCreated: number;
@@ -57,17 +70,8 @@ export interface TrackerPayload {
   metadata: Object;
   description: string;
   operatorUuid: string;
-}
-
-export interface ProductTokenPayload {
-  productId: number;
-  trackerId: number;
-  auditor: string;
-  amount: bigint;
-  available: bigint;
-  name: string;
-  unit: string;
-  unitAmount: number;
+  tokens: TokenPayload[];
+  products: ProductTokenPayload[];
 }
 
 

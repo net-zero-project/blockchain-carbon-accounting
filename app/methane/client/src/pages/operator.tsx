@@ -114,7 +114,6 @@ const RegisteredOperator: ForwardRefRenderFunction<OperatorsHandle, OperatorsPro
 
   const handleTrackerSelect = useCallback((_tracker:Tracker|null) => {
     setTracker(_tracker);
-    console.log(_tracker)
   },[setTracker]);
 
   const trackerCreate = result => {
