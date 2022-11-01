@@ -94,6 +94,7 @@ jobs:
         # Provide the password for postgres
         env:
           POSTGRES_PASSWORD: postgres
+          POSTGRES_USER: postgres
           POSTGRES_DB: blockchain-carbon-accounting-test
         # Set health checks to wait until postgres has started
         options: >-
@@ -121,9 +122,18 @@ jobs:
           cd ./hardhat/
           echo "n" | npx hardhat node &
       - name: Start local api-server # Start the api-server used by Fabric oracle service
+        env:
+          DB_NAME: blockchain-carbon-accounting-test
+          DB_USER: postgres
+          DB_PASSWORD: postgres
+          API_SERVER_CORS: http://localhost:3002
+          LEDGER_ETH_NETWORK: hardhat
+          LEDGER_EMISSION_TOKEN_CONTRACT_ADDRESS: "0x2279B7A0a67DB372996a5FaB50D91eAA73d2eBe6"
+          LEDGER_CARBON_TRACKER_ADDRESS: "0x610178dA211FEF7D417bC0e6FeD39F05609AD788"
+          LEDGER_ETH_JSON_RPC_URL: http://localhost:8545
         run: |
           cd ./app/api-server/
-          echo "n" | npm run dev:tests &        
+          echo "n" | npm run dev & 
       - name: Build emissions-data project # Add required hostnames to /etc/hosts and runs start script
         run: |
           cd ./fabric/docker-compose-setup/
@@ -134,14 +144,17 @@ jobs:
           127.0.0.1       peer1.auditor1.carbonAccounting.com" | sudo tee -a /etc/hosts
           ./startDev.sh &
       - name: Run tests # Wait for the blockchain network to start up and then run the tests
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
         run: |
           cd ./fabric/typescript_app/
           while ! timeout 1 bash -c "echo > /dev/tcp/localhost/8080" > /dev/null 2>&1; do sleep 10; done
           npm run test:setup
           npm run test:ci
-        env:
-          POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: postgres
+      - name: Collect Docker Logs
+        if: failure()
+        uses: jwalton/gh-docker-logs@v2.2.0
       - uses: actions/upload-artifact@v3
         if: success() || failure()
         with:
