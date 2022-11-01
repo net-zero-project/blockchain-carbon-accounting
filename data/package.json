@@ -3,11 +3,12 @@
   "version": "1.0.0",
   "private": true,
   "description": "Postgres database store for the blockchain-carbon-accounting project",
+  "main": "./dist/index.js",
   "engines": {
     "node": ">=16"
   },
   "scripts": {
-    "build": "tsc",
+    "build": "tsc -b",
     "init": "ts-node src/dataLoader.ts init",
     "dataLoader": "ts-node src/dataLoader.ts",
     "getData": "ts-node src/getData.ts",

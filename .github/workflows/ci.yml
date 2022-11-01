@@ -123,7 +123,12 @@ jobs:
       - name: Start local api-server # Start the api-server used by Fabric oracle service
         run: |
           cd ./app/api-server/
-          echo "n" | npm run dev:tests &        
+          echo "n" | npm run dev & 
+        env:
+          DB_NAME: blockchain-carbon-accounting-test
+          DB_USER: postgres
+          DB_PASSWORD: postgres
+          API_SERVER_CORS: http://localhost:3002
       - name: Build emissions-data project # Add required hostnames to /etc/hosts and runs start script
         run: |
           cd ./fabric/docker-compose-setup/
@@ -142,6 +147,9 @@ jobs:
         env:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres
+      - name: Collect Docker Logs
+        if: failure()
+        uses: jwalton/gh-docker-logs@v2.2.0
       - uses: actions/upload-artifact@v3
         if: success() || failure()
         with:
