@@ -63,9 +63,7 @@ export type Tracker = {
   myProductsTotalEmissions?: number
   products?: ProductToken[]
   tokens?: Token[] & {
-    amounts?: bigint[]
     myAmounts?: number[]
-    details?: any[]
   }
 }
 
@@ -82,6 +80,7 @@ export type ProductToken = {
   unit?: string
   unitAmount?: number
   unitAvailable?: number
+  metadata?: Object
 
 }
 

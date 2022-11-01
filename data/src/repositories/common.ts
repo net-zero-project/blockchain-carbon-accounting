@@ -21,6 +21,7 @@ export interface StringPayload {
 
 export interface TokenPayload {
   tokenId: number;
+  trackerId?: number;
   tokenTypeId: number;
   issuedBy: string;
   issuedFrom: string;
@@ -41,6 +42,18 @@ export interface TokenPayload {
 
 export type EmissionsRequestPayload = Omit<EmissionsRequest, 'uuid' | 'created_at' | 'updated_at' | 'toJSON'>
 
+export interface ProductTokenPayload {
+  productId: number;
+  trackerId: number|undefined;
+  auditor: string;
+  amount: bigint;
+  available: bigint;
+  name: string;
+  unit: string;
+  unitAmount: number;
+  emissionsFactor: number;
+}
+
 export interface TrackerPayload {
   trackerId: number;
   trackee: string;
@@ -48,31 +61,22 @@ export interface TrackerPayload {
   auditor: string;
   totalProductAmounts: bigint;
   totalEmissions: bigint;
-  totalOffset: bigint;
+  totalOffsets: bigint;
   fromDate: number;
   thruDate: number;
   dateCreated: number;
   dateUpdated: number;
   // eslint-disable-next-line
-  metadata: object;
+  metadata: Object;
   description: string;
   operatorUuid: string;
-}
-
-export interface ProductTokenPayload {
-  productId: number;
-  trackerId: number;
-  auditor: string;
-  amount: bigint;
-  available: bigint;
-  name: string;
-  unit: string;
-  unitAmount: number;
-  hash: string;
+  tokens: TokenPayload[];
+  products: ProductTokenPayload[];
 }
 
 
 const OP_MAP: Record<string, string> = {
+    'neq': '!=',
     'eq': '=',
     'like': 'like',
     'ls': '<',
@@ -117,6 +121,7 @@ export function buildQueries(
       // process 'like' exception for payload
       if(query.op == 'like') payload[query_field_label] = '%' + query.value as string + '%'
       else if(query.op == '=') payload[query_field_label] = query.value as string
+      else if(query.op == '!=') payload[query_field_label] = query.value as string
       else if(query.op == 'vector') payload[query_field_label] = query.value as string
 
     }

@@ -813,6 +813,7 @@ export async function getTrackerDetails(
       let productId = productIds[i]
 
       const productData = await contract._productData(productId);
+      if(!(productData[2]>0)){continue;}
       const conversion = Number(productData[2])/Number(productData[6]);
       let product:ProductToken = {
         productId,
@@ -855,7 +856,7 @@ export async function getTrackerDetails(
       fromDate: Number(trackerDetails.fromDate),
       thruDate: Number(trackerDetails.thruDate),
       createdBy: trackerDetails.createdBy,
-      metadata: trackerDetails.metadata,
+      metadata: trackerDetails.metadata ? JSON.parse(trackerDetails.metadata) : {},
       description: trackerDetails.description,
       totalEmissions,
       //: Number(remainingEmissions.toFixed(0)),
@@ -864,9 +865,7 @@ export async function getTrackerDetails(
       products: products,
       tokens: {
         ...tokenDetails,
-        amounts: tokenAmounts,
         myAmounts: myTokenAmounts,
-        details: tokenDetails
       },
     };
     details = tracker
