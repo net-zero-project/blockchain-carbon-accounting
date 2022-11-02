@@ -6,7 +6,6 @@
   "main": "./dist/index.js",
   "scripts": {
     "start": "node dist/server.js",
-    "dev:tests": "dotenv -e ./.env.test nodemon server.ts",
     "dev": "nodemon server.ts",
     "loadDemoSeeds": "dotenv -e ../../.env -- bash -c 'psql ${DB_NAME} -f ./seedHardhatDemoWallets.sql'",
     "build": "tsc -b && npm run copy-email",
