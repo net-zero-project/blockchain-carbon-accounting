@@ -21,13 +21,16 @@ import { verifyTracker } from "../services/contract-functions";
 //getNumOfUniqueTrackers, getTrackerDetails, 
 
 import { getTrackers,getTracker } from '../services/api.service';
-//import { trpc } from "../services/trpc";
 
 import TrackerInfoModal from "../components/tracker-info-modal";
 import Paginator from "../components/paginate";
 import { RolesInfo, Tracker, ProductToken } from "../components/static-data";
+//import { Wallet } from "../components/static-data";
+//import { trpc } from "../services/trpc";
+import { Link } from "wouter";
 
-type SelectTrackers = 'my' | 'my_products' | 'issued' | 'unissued' | 'requested' | 'audited'
+type SelectTrackers = 'my' | 'my_requested' | 'my_products' | 'issued' | 'unissued' | 'requested' | 'audited'
+
 
 type IssuedTrackersProps = {
   provider?: Web3Provider | JsonRpcProvider,
@@ -67,6 +70,7 @@ const IssuedTrackers: ForwardRefRenderFunction<IssuedTrackersHandle, IssuedTrack
   if(signedInAddress){
     trackerSelectors.push(
       {key: 'my', value: 'issued to me'},
+      {key: 'my_requested', value: 'requested for me'},
       //{key: 'my_products',  value: 'for my products'}
     )
   } 
@@ -166,7 +170,12 @@ const IssuedTrackers: ForwardRefRenderFunction<IssuedTrackersHandle, IssuedTrack
           newQuery = _query.concat([`auditor,string,${signedInAddress},like,true`])
           break
         case 'my':
-          newQuery = _query.concat([`trackee,string,${signedInAddress},like,true`])
+          newQuery = _query.concat([`trackee,string,${signedInAddress},like,true`,
+            `auditor,string,0x0000000000000000000000000000000000000000,neq,true`])
+          break
+        case 'my_requested':
+          newQuery = _query.concat([`trackee,string,${signedInAddress},like,true`,
+            `auditor,string,0x0000000000000000000000000000000000000000,eq,true`])
           break
         case 'my_products':
           newQuery = _query.concat([`trackee,string,${signedInAddress},like,true`])
@@ -383,13 +392,20 @@ const IssuedTrackers: ForwardRefRenderFunction<IssuedTrackersHandle, IssuedTrack
       />}
 
       <p className="text-danger">{error}</p>
-
       
       <Dropdown style={{display: 'inline'}}>
         <DropdownButton title={"Emission certificates "+(showTrackers ? showTrackersLabel : "Select Trackers")} style={{display: 'inline'}} id="dropdown-menu-align-right" onSelect={async (value) => { await handleTrackersSelect(value!)}}>
           { trackerSelectors.map((labelObj,index) => (<Dropdown.Item key={labelObj.key} eventKey={index}>{labelObj.value}</Dropdown.Item>))}
         </DropdownButton>
       </Dropdown>
+
+      <Link href="/track/0">
+        <Button
+          className="mb-3"
+          variant="outline-dark">
+          Issue
+        </Button>
+      </Link>
 
       {isDealer && <Button style={{display: 'inline'}} className="mb-3" variant="outline-dark" href={`/track/${selectedTracker?.trackerId || 0}`}> Request certificate </Button>}
       <div className="mt-4">
