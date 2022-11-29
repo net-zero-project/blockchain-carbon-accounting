@@ -8,12 +8,14 @@ export const trackerRouter = (zQueryBundles:any) => trpc
 .query('count', {
     input: z.object({
         bundles: zQueryBundles.default([]),
+        issuedTo: z.string().default('0x0000000000000000000000000000000000000000'),
+        tokenTypeId: z.number().default(0)
     }).default({}),
     async resolve({ input, ctx }) {
         try {
             return {
                 status: 'success',
-                count: await ctx.db.getTrackerRepo().countTrackers(input.bundles) 
+                count: await ctx.db.getTrackerRepo().countTrackers(input.bundles,input.issuedTo, input.tokenTypeId) 
             }
         } catch (error) {
             console.error(error)
@@ -28,12 +30,14 @@ export const trackerRouter = (zQueryBundles:any) => trpc
     input: z.object({
         bundles: zQueryBundles.default([]),
         offset: z.number().gte(0).default(0),
-        limit: z.number().gt(0).default(10)
+        limit: z.number().gte(0).default(10),
+        issuedTo: z.string().default('0x0000000000000000000000000000000000000000'),
+        tokenTypeId: z.number().default(0)
     }).default({}),
     async resolve({ input, ctx }) {
         try {
-            const trackers = await ctx.db.getTrackerRepo().selectPaginated(input.offset, input.limit, input.bundles);
-            const count = await ctx.db.getTrackerRepo().countTrackers(input.bundles);
+            const trackers = await ctx.db.getTrackerRepo().selectPaginated(input.offset, input.limit, input.bundles, input.issuedTo, input.tokenTypeId);
+            const count = await ctx.db.getTrackerRepo().countTrackers(input.bundles, input.issuedTo, input.tokenTypeId);
             return {
                 status: 'success',
                 count,
@@ -50,11 +54,11 @@ export const trackerRouter = (zQueryBundles:any) => trpc
 })
 .query('get', {
     input: z.object({
-        trackerId: z.number().gte(0).default(0)
+        trackerId: z.number().gt(0).default(0)
     }).default({}),
     async resolve({ input, ctx }) {
         try {
-            const tracker = await ctx.db.getTrackerRepo().selectTracker(input.trackerId);
+            const tracker = await ctx.db.getTrackerRepo().select(input.trackerId);
             return {
                 status: 'success',
                 tracker: Tracker.toRaw(tracker!)

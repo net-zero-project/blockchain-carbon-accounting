@@ -18,8 +18,7 @@ import { JsonRpcProvider, Web3Provider } from "@ethersproject/providers";
 import { getProducts, getOperator, getProductAttributes, getProductTotals } from '../services/api.service';
 
 import { productTypes } from "@blockchain-carbon-accounting/oil-and-gas-data-lib/src/product"
-import type { Emissions }from "@blockchain-carbon-accounting/supply-chain-lib";
-
+import type { ActivityResult }from "@blockchain-carbon-accounting/supply-chain-lib";
 
 import QueryBuilder from "@blockchain-carbon-accounting/react-app/src/components/query-builder";
 
@@ -122,15 +121,19 @@ const RegisteredOperator: ForwardRefRenderFunction<OperatorsHandle, OperatorsPro
     setModalShow(false);
   };
 
-  const calculateEmissions = (emissions: Emissions) => {
+  const calculateEmissions = (activityResult: ActivityResult) => {
     //setModalShow(false);
-    localStorage.setItem('quantity', emissions.amount.value.toString())
+    localStorage.setItem('quantity', activityResult?.emissions?.amount?.value?.toString()!)
     localStorage.setItem('fromDate', selectedProduct?.from_date?.toString()!)
     localStorage.setItem('thruDate', selectedProduct?.thru_date?.toString()!)
     localStorage.setItem('description', selectedProduct?.name!)
-    localStorage.setItem('scope', emissions.scope?.toString()!)
-    localStorage.setItem('manifest', JSON.stringify(selectedProduct))
-    localStorage.setItem('tokenTypeId', '4')
+
+    localStorage.setItem('scope',  activityResult?.emissions?.scope?.toString()!)
+    localStorage.setItem('type',  activityResult?.details?.scope?.toString()!)
+    localStorage.setItem('gwp',  activityResult?.details?.gwp?.toString()!)
+
+    localStorage.setItem('manifest', JSON.stringify(selectedProduct?.source!))
+    localStorage.setItem('tokenTypeId', '3')
     setShowIssueForm(true)
   };
 
@@ -350,7 +353,6 @@ const RegisteredOperator: ForwardRefRenderFunction<OperatorsHandle, OperatorsPro
 
   return (<>
     <p className="text-danger">{error}</p>
-    <Form></Form>
     <div className={fetchingProducts ? "dimmed" : ""}>
       {fetchingProducts && (
         <div className="text-center my-4">
@@ -394,13 +396,13 @@ const RegisteredOperator: ForwardRefRenderFunction<OperatorsHandle, OperatorsPro
           </h2>
           <p>Public address: {operator?.wallet_address}</p>
 
-          <IssuedTrackers provider={provider} roles={roles} signedInAddress={signedInAddress} displayAddress={operator?.wallet_address!} _showTrackers={'unissued'} handleTrackerSelect={handleTrackerSelect} operatorUuid={operatorUuid}/>
+          <IssuedTrackers provider={provider} roles={roles} signedInAddress={signedInAddress} displayAddress={operator?.wallet_address!} _showTrackers={'unissued'} handleTrackerSelect={handleTrackerSelect} operator={operator}/>
           {(roles.isAeDealer && showIssueForm) ? 
             <IssueForm provider={provider} roles={roles} signedInAddress={  signedInAddress} signedInWallet={signedInWallet} limitedMode={limitedMode} trackerId={tracker?.trackerId} onSubmit={issueFormSubmit} />
             : <Row className='mt-4'><Form.Check  
               type={'checkbox'} 
               id={'selectMultipleDataPoints'} 
-              label={"Select multiple data points for emissions audit request:  "+(tracker ? `Certificate ${tracker!.description} (ID # ${tracker!.trackerId})` : 'New certificate')} 
+              label={"Select multiple data points for emissions audit request:  "+(tracker ? `Certificate ${(tracker?.metadata as any).description} (ID # ${tracker!.trackerId})` : 'New certificate')} 
               onClick={() => {handleSelectProducts()}}/></Row>
           }
           {selectProducts &&<Row> 
@@ -481,18 +483,18 @@ const RegisteredOperator: ForwardRefRenderFunction<OperatorsHandle, OperatorsPro
             </Row>
             <Table hover size="sm">
               <thead><tr>
-                <th>Name</th>{/*md={3} sm={4} xs={6}*/}
-                <th>Amount</th>{/*md={3} sm={4} xs={6}*/}
-                <th>Country</th>{/*md={2} sm={4} xs={6}*/}
-                <th>Year</th>{/*md={2} sm={6} xs={6}*/}
+                <th>Name</th>
+                <th>Amount</th>
+                <th>Country</th>
+                <th>Year</th>
                 {(showProductTotals) ? 
-                  (showMonthTotals && <th>Month</th>)/*md={2} sm={6} xs={6}*/
+                  (showMonthTotals && <th>Month</th>)
                   :<>
                   <th>Month</th>
                   {selectFromAssets ? 
                     <th>Asset</th> : 
                     <th>Division</th>
-                  }{/* Col md={3} sm={3} xs={6}*/}
+                  }
                 </>}
               </tr></thead>
               <tbody>
@@ -500,15 +502,15 @@ const RegisteredOperator: ForwardRefRenderFunction<OperatorsHandle, OperatorsPro
                     <tr key={[product?.name,index].join('_')} 
                       onClick={() => {selectProducts ? handleSelectProduct(product) : handleOpenProductInfoModal(product)}}
                       onMouseOver={ pointerHover}>
-                      <td>{product.name}{/*Col md={4} sm={3} xs={6}*/}</td>
-                      <td>{(product.amount * (product?.unit==="%" ? 100:1)).toLocaleString('en-US',{maximumFractionDigits:6})} {product?.unit}{/*Col md={4}   sm={3} xs={6}*/}</td>
-                      <td>{product.country}</td>{/*md={2} sm={4} xs={6}  */}
-                      <td>{product.year}{/*Col md={1} sm={3} xs={6}*/}</td>
+                      <td>{product.name}</td>
+                      <td>{(product.amount * (product?.unit==="%" ? 100:1)).toLocaleString('en-US',{maximumFractionDigits:6})} {product?.unit}</td>
+                      <td>{product.country}</td>
+                      <td>{product.year}</td>
                       {(showProductTotals) ? 
-                        (showMonthTotals && <td>{product.month}</td>)/*md={2} sm={6} xs={6}*/
+                        (showMonthTotals && <td>{product.month}</td>)
                         :<><td>{product.month}</td>
                         { selectFromAssets ?
-                          <td><a href={`https://maps.google.com/?q=${product?.latitude},${product?.longitude}`} target="_blank" rel=" noopener noreferrer" >{product?.assets! && product?.assets?.length>0 && product?.assets[0]!.name!}</a>{/*  Col md={3} sm={3} xs={6}*/}</td>:
+                          <td><a href={`https://maps.google.com/?q=${product?.latitude},${product?.longitude}`} target="_blank" rel=" noopener noreferrer" >{product?.assets! && product?.assets?.length>0 && product?.assets[0]!.name!}</a></td>:
                           <td>{product?.division_type}: {product?.division_name}</td  >
                         }</>
                       }
