@@ -23,6 +23,7 @@ const TransferForm = lazy(() => import("./pages/transfer-form"));
 const RetireForm = lazy(() => import("./pages/retire-form"));
 const ProductForm = lazy(() => import("./pages/product-form"));
 const ProductTransferForm = lazy(() => import("./pages/product-transfer-form"));
+
 const AccessControlForm = lazy(() => import("./pages/access-control-form"));
 const GovernanceDashboard = lazy(() => import("./pages/governance-dashboard"));
 const RequestAudit = lazy(() => import("./pages/request-audit"));
@@ -143,22 +144,22 @@ const App:FC = () => {
                         <IssueForm provider={provider} roles={roles} signedInAddress={signedInAddress} limitedMode={limitedMode} signedInWallet={signedInWallet} requestId={params.requestId} />
                       }</Route>
                       <Route path="/transfer">
-                        <TransferForm provider={provider} roles={roles} />
+                        <TransferForm provider={provider} roles={roles} signedInAddress={signedInAddress} signedInWallet={signedInWallet} />
                       </Route>
                       <Route path="/retire">
-                        <RetireForm provider={provider} roles={roles} />
+                        <RetireForm provider={provider} roles={roles} signedInAddress={signedInAddress} signedInWallet={signedInWallet} />
                       </Route>
                       <Route path="/issuedTrackers/:address?">{params=>
                         <IssuedTrackers provider={provider} roles={roles} signedInAddress={signedInAddress} displayAddress={params.address}/>
                       }</Route>
                       <Route path="/track/:trackerId?">{params=>
-                        <IssueForm provider={provider} roles={roles} signedInAddress={signedInAddress} limitedMode={limitedMode} signedInWallet={signedInWallet} trackerId={Number(params.trackerId)} />
+                        <IssueForm provider={provider} roles={roles} signedInAddress={signedInAddress} signedInWallet={signedInWallet} limitedMode={limitedMode} trackerId={Number(params.trackerId)}/>
                       }</Route>
                       <Route path="/addProduct/:trackerId?">{params=>
-                        <ProductForm provider={provider} roles={roles} signedInAddress={signedInAddress} limitedMode={limitedMode} trackerId={Number(params.trackerId)}/>
+                        <ProductForm provider={provider} roles={roles} limitedMode={limitedMode} trackerId={Number(params.trackerId)} signedInWallet={signedInWallet} signedInAddress={signedInAddress}/>
                       }</Route>
-                      <Route path="/transferProduct/:trackerId/:productId?">{params=>
-                        <ProductTransferForm provider={provider} roles={roles} signedInAddress={signedInAddress} trackerId={Number(params.trackerId)} productId={Number(params.productId)}/>
+                      <Route path="/transferProduct/:productId?">{params=>
+                        <ProductTransferForm provider={provider} roles={roles} signedInAddress={signedInAddress} signedInWallet={signedInWallet} productId={Number(params.productId)}/>
                       }</Route>
                       <Route path="/access-control">
                         <AccessControlForm ref={accessControlRef} provider={provider} providerRefresh={refresh} signedInAddress={signedInAddress} roles={roles} limitedMode={limitedMode} signedInWallet={signedInWallet} />

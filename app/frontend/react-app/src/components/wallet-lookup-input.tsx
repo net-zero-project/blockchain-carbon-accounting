@@ -65,7 +65,7 @@ const WalletLookupInput:ForwardRefRenderFunction<WalletLookupInputHandle, Wallet
 
   const lookupQuery = trpc.useQuery(['wallet.lookup', {query: searchText}], {
     enabled: !!searchText && searchText.length > 0,
-    onSettled: (data, error) => {
+    onSettled: (data, _error) => {
       //console.log('lookup query settled with', data, error)
       //console.log('searchText', searchText)
       if (data?.wallets) {
@@ -118,12 +118,14 @@ const WalletLookupInput:ForwardRefRenderFunction<WalletLookupInputHandle, Wallet
     classes={classes}
     renderOption={(props, option) => {
       const name = (typeof option === 'string') ? null : option.name
+      const roles = (typeof option === 'string') ? null : option.roles
       const addr = (typeof option === 'string') ? option : option.address
       const org = (typeof option === 'string') ? null : option.organization
 
       return (
         <li {...props} className={`${props.className} flex-wrap`}>
           {name && <b className="pe-2">{name}</b>}
+          {roles && <b className="pe-2">{`Roles: ${roles}`}</b>}
           {org && <div className="text-muted pe-2">{org}</div>}
           {addr}
         </li>
