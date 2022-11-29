@@ -24,10 +24,10 @@ const networksAndAddresses = {
   goerli: {
     network: "Goerli Testnet",
     tokenNetwork: {
-      address: "0x8288C43fA04F1619BBA0b70582aEaF9c6395d259",
+      address: "0x118938E52100df8FfE8793f8ec231f56d85e8E72",
     },
     carbonTracker: {
-      address: "0xC38Cb07C235eCc448CE3e3F1e7AD19d46d502fEa",
+      address: "0x039EF5c92CC8249D2cb3785B68bc4F79dC8a7625",
     },
     dao: {
       governor: {
