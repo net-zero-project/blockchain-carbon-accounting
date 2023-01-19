@@ -24,8 +24,11 @@ const networksAndAddresses = {
   goerli: {
     network: "Goerli Testnet",
     tokenNetwork: {
+      //address: "0xE8854ec567b3762046d8f773547f373e6A1A620A", 
+      /*November 29, 2022*/ 
       address: "0x118938E52100df8FfE8793f8ec231f56d85e8E72",
     },
+    /*November 29, 2022*/ 
     carbonTracker: {
       address: "0x039EF5c92CC8249D2cb3785B68bc4F79dC8a7625",
     },
