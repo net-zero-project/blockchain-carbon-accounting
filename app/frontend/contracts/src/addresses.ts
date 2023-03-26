@@ -21,6 +21,25 @@ const networksAndAddresses = {
     }
   },
 
+  hedera_testnet: {
+    network: "Hedera Testnet",
+    tokenNetwork: {
+      address: "0x00000000000000000000000000000000003be83f", 
+    },
+    /*November 29, 2022*/ 
+    carbonTracker: {
+      address: "",
+    },
+    dao: {
+      governor: {
+        address: "",
+      },
+      daoToken: {
+        address: "",
+      }
+    }
+  },
+
   goerli: {
     network: "Goerli Testnet",
     tokenNetwork: {
@@ -152,6 +171,6 @@ const networksAndAddresses = {
 }
 
 // change this to the network you want
-const addresses = networksAndAddresses.goerli;
+const addresses = networksAndAddresses.hedera_testnet;
 
 export default addresses;

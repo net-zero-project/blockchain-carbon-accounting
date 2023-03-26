@@ -1,4 +1,7 @@
-const { Client, ContractCreateTransaction, FileCreateTransaction, FileAppendTransaction, PrivateKey} = require("@hashgraph/sdk");
+const { 
+    Client, PrivateKey, AccountId,
+    ContractCreateTransaction, ContractFunctionParameters,
+    FileCreateTransaction, FileAppendTransaction } = require("@hashgraph/sdk");
 require("dotenv").config();
 
 string_chop =  function(str, size){
@@ -11,8 +14,10 @@ return size > 0 ? str.match(new RegExp('.{1,' + size + '}', 'g')) : [str];
 async function main() {
 
 //Grab your Hedera testnet account ID and private key from your .env file
-const myAccountId = process.env.MY_ACCOUNT_ID;
-const myPrivateKey = process.env.MY_PRIVATE_KEY;
+const myAccountId = //AccountId.fromString(
+    process.env.MY_ACCOUNT_ID;
+const myPrivateKey = //PrivateKey.fromString(
+    process.env.MY_PRIVATE_KEY;
 
 // If we weren't able to grab it, we should throw a new error
 if (myAccountId == null ||
@@ -26,7 +31,7 @@ const client = Client.forTestnet();
 
 client.setOperator(myAccountId, myPrivateKey);
 
-let NetEmissionsTokens = require("../../artifacts/contracts/NetEmissionsTokenNetwork.sol/NetEmissionsTokenNetwork.json");
+let NetEmissionsTokens = require("../artifacts/solidity/NetEmissionsTokenNetwork.sol/NetEmissionsTokenNetwork.json");
 const bytecode = NetEmissionsTokens.bytecode;
 
 // Hedera files have a limit of 6 KB so we must chop the bytecode down 
@@ -38,6 +43,8 @@ chunks = bytecode_arr.length;
 const fileCreateTx = new FileCreateTransaction()
     .setKeys([PrivateKey.fromString(myPrivateKey)])
     .setContents(bytecode_arr[0]);
+
+console.log(myPrivateKey)
 
 //Submit the file to the Hedera test network signing with the transaction fee payer key specified with the client
 const submitTx = await fileCreateTx.execute(client);
@@ -71,8 +78,10 @@ const contractTx = await new ContractCreateTransaction()
     //The bytecode file ID
     .setBytecodeFileId(bytecodeFileId)
     //The max gas to reserve
-    .setGas(2000000);
-
+    .setGas(2000000)
+    //Provide the constructor parameters for the contract
+    .setConstructorParameters(new ContractFunctionParameters().addAddress(process.env.PUBLIC_EVM_ADDRESS))
+;
 //Submit the transaction to the Hedera test network
 const contractResponse = await contractTx.execute(client);
 
