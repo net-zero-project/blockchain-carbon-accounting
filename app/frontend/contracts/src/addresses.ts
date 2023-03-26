@@ -21,6 +21,25 @@ const networksAndAddresses = {
     }
   },
 
+  hedera-testnet: {
+    network: "Hedera Testnet",
+    tokenNetwork: {
+      address: "0x00000000000000000000000000000000003be83f", 
+    },
+    /*November 29, 2022*/ 
+    carbonTracker: {
+      address: "",
+    },
+    dao: {
+      governor: {
+        address: "",
+      },
+      daoToken: {
+        address: "",
+      }
+    }
+  },
+
   goerli: {
     network: "Goerli Testnet",
     tokenNetwork: {
