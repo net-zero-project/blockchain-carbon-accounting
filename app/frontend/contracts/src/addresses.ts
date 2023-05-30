@@ -171,6 +171,6 @@ const networksAndAddresses = {
 }
 
 // change this to the network you want
-const addresses = networksAndAddresses.hedera_testnet;
+const addresses = networksAndAddresses.goerli;
 
 export default addresses;
